@@ -113,7 +113,7 @@ resource "aws_security_group" "dns64_nat64" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["66.249.77.67/32"] # The specific IPv4 address
+    cidr_blocks = ["173.38.117.87/32"] # The specific IPv4 address
     description = "SSH access from specific IPv4 address"
   }
 
@@ -172,14 +172,6 @@ resource "aws_security_group" "test_instance" {
   name   = "terraform-Network5-test"
   vpc_id = aws_vpc.terraform_vpc.id
 
-  ingress {
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-    ipv6_cidr_blocks = ["::/0"]
-    description      = "SSH access"
-  }
-
   egress {
     from_port        = 0
     to_port          = 0
@@ -197,10 +189,10 @@ resource "aws_security_group" "test_instance" {
 # Key Pair
 ###################
 
-resource "aws_key_pair" "deployer" {
-  key_name   = "terraform-network5-key"
-  public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII4BHU0dKBfL6sFaFHdqHeQOrzj9cmAwWpLMAvN0DCys sshahary@cisco.com"
-}
+# resource "aws_key_pair" "deployer" {
+#   key_name   = "terraform-network5-key"
+#   public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII4BHU0dKBfL6sFaFHdqHeQOrzj9cmAwWpLMAvN0DCys sshahary@cisco.com"
+# }
 
 resource "aws_key_pair" "thomas_key" {
   key_name   = "thomas_key"
@@ -220,8 +212,6 @@ resource "aws_instance" "dns64_nat64" {
   vpc_security_group_ids = [aws_security_group.dns64_nat64.id]
   key_name               = aws_key_pair.thomas_key.key_name # Add this line
 
-  user_data = file("${path.module}/scripts/dns64_nat64_setup.sh")
-
   tags = {
     Name = "terraform-Network5-dns64-nat64"
   }
@@ -234,10 +224,6 @@ resource "aws_instance" "test_instance" {
   ipv6_address_count     = 1
   vpc_security_group_ids = [aws_security_group.test_instance.id]
   key_name               = aws_key_pair.thomas_key.key_name # Add this line
-
-  user_data = templatefile("${path.module}/scripts/test_instance_setup.sh.tpl", {
-    dns64_server_ipv6 = aws_instance.dns64_nat64.ipv6_addresses[0]
-  })
 
   tags = {
     Name = "terraform-Network5-test"

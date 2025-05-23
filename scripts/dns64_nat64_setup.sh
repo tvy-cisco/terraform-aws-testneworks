@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # Update system and install required packages
 apt-get update
@@ -36,18 +37,22 @@ server:
     do-tcp: yes
     hide-identity: yes
     hide-version: yes
-    dns64-prefix: 64:ff9b::/96
+    dns64-prefix: 2001:db8:1::/96
     dns64-synthall: yes
     module-config: "validator dns64 iterator"
 EOF
+
+mkdir -p /var/spool/tayga
 
 # Configure Tayga for NAT64
 cat > /etc/tayga.conf <<EOF
 tun-device nat64
 ipv4-addr 192.168.255.1
-prefix 64:ff9b::/96
-ipv6-addr ${IPV6_ADDR}
+prefix 2001:db8:1::/96
+# Assign a unique IPv6 address from the NAT64 prefix for the NAT64 interface
+ipv6-addr 2001:db8:1::1
 dynamic-pool 192.168.255.0/24
+data-dir /var/spool/tayga
 EOF
 
 # Enable IPv6 forwarding
@@ -55,28 +60,35 @@ echo 'net.ipv6.conf.all.forwarding=1' > /etc/sysctl.d/30-ipv6-forward.conf
 sysctl -p /etc/sysctl.d/30-ipv6-forward.conf
 
 # Configure and start Tayga
-mkdir -p /var/db/tayga
-tayga --mktun
+if ! ip link show nat64 &>/dev/null; then
+    tayga --mktun
+fi
 ip link set nat64 up
-ip addr add 192.168.255.1 dev nat64
-ip -6 addr add 64:ff9b::192.168.255.1/96 dev nat64
+ip addr add 192.168.255.1 dev nat64 || true
+ip -6 addr add 2001:db8:1::1/96 dev nat64 || true
 
 # Add routing rules
-ip route add 192.168.255.0/24 dev nat64
-ip -6 route add 64:ff9b::/96 dev nat64
+ip route add 192.168.255.0/24 dev nat64 || true
+ip -6 route add 2001:db8:1::/96 dev nat64 || true
 
 # Add iptables rules for NAT64
 iptables -t nat -A POSTROUTING -o $PRIMARY_INTERFACE -j MASQUERADE
 iptables-save > /etc/iptables/rules.v4
 
-# Add ip6tables rules if needed
-ip6tables -t nat -A POSTROUTING -o $PRIMARY_INTERFACE -j MASQUERADE
+# Add ip6tables rules if needed (NAT for IPv6 may not be supported)
+if ip6tables -t nat -L &>/dev/null; then
+    ip6tables -t nat -A POSTROUTING -o $PRIMARY_INTERFACE -j MASQUERADE
+fi
 ip6tables -A FORWARD -i $PRIMARY_INTERFACE -o nat64 -j ACCEPT
 ip6tables -A FORWARD -o $PRIMARY_INTERFACE -i nat64 -j ACCEPT
 ip6tables-save > /etc/iptables/rules.v6
 
 # Start Tayga daemon
-tayga -d
+tayga
 
 # Restart Unbound
-systemctl restart unbound
+if systemctl is-active --quiet unbound; then
+    systemctl restart unbound
+else
+    systemctl start unbound
+fi
