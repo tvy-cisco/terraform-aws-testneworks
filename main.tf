@@ -108,13 +108,17 @@ resource "aws_security_group" "dns64_nat64" {
   name        = "terraform-Network5-dns64-nat64"
   vpc_id      = aws_vpc.terraform_vpc.id
 
-  # SSH access from specific IP
+  # SSH access from specific IPs
   ingress {
     from_port        = 22
     to_port          = 22
     protocol         = "tcp"
-    cidr_blocks      = ["66.249.77.67/32"]  # The specific IPv4 address
-    description      = "SSH access from specific IPv4 address"
+    cidr_blocks      = [
+      "151.186.183.17/32",    # Added IP
+      "151.186.183.81/32",    # Added IP
+      "151.186.192.0/20"      # Added IP range
+    ]
+    description      = "SSH access from specific IPv4 addresses"
   }
 
   # DNS queries
@@ -172,6 +176,7 @@ resource "aws_security_group" "test_instance" {
   name        = "terraform-Network5-test"
   vpc_id      = aws_vpc.terraform_vpc.id
 
+  # SSH access
   ingress {
     from_port        = 22
     to_port          = 22
@@ -180,6 +185,33 @@ resource "aws_security_group" "test_instance" {
     description      = "SSH access"
   }
 
+  # ICMPv6 (ping6)
+  ingress {
+    from_port        = -1
+    to_port          = -1
+    protocol         = "58"  # ICMPv6 protocol number
+    ipv6_cidr_blocks = ["::/0"]
+    description      = "ICMPv6 (ping6)"
+  }
+
+  # DNS queries (for dig)
+  egress {
+    from_port        = 53
+    to_port          = 53
+    protocol         = "udp"
+    ipv6_cidr_blocks = ["::/0"]
+    description      = "DNS queries (UDP)"
+  }
+  
+  egress {
+    from_port        = 53
+    to_port          = 53
+    protocol         = "tcp"
+    ipv6_cidr_blocks = ["::/0"]
+    description      = "DNS queries (TCP)"
+  }
+
+  # All outbound traffic
   egress {
     from_port        = 0
     to_port          = 0
@@ -207,7 +239,7 @@ resource "aws_key_pair" "deployer" {
 ###################
 
 resource "aws_instance" "dns64_nat64" {
-  ami                    = "ami-0735c191cf914754d"  # Ubuntu 22.04 LTS
+  ami                    = "ami-03e383d33727f4804" 
   instance_type          = "t3.small"
   subnet_id              = aws_subnet.public_subnet_5.id
   ipv6_address_count     = 1
@@ -223,12 +255,12 @@ resource "aws_instance" "dns64_nat64" {
 }
 
 resource "aws_instance" "test_instance" {
-  ami                    = "ami-0735c191cf914754d"  # Ubuntu 22.04 LTS
+  ami                    = "ami-03e383d33727f4804"
   instance_type          = "t3.small"
   subnet_id              = aws_subnet.private_subnet_5.id
   ipv6_address_count     = 1
   vpc_security_group_ids = [aws_security_group.test_instance.id]
-  key_name               = aws_key_pair.deployer.key_name  # Add this line
+  key_name               = aws_key_pair.deployer.key_name // Changed to use the deployer key
 
   user_data = templatefile("${path.module}/scripts/test_instance_setup.sh.tpl", {
     dns64_server_ipv6 = aws_instance.dns64_nat64.ipv6_addresses[0]
@@ -238,7 +270,6 @@ resource "aws_instance" "test_instance" {
     Name = "terraform-Network5-test"
   }
 }
-
 ###################
 # Outputs
 ###################
@@ -248,7 +279,37 @@ output "nat64_server_ipv6" {
   value       = aws_instance.dns64_nat64.ipv6_addresses[0]
 }
 
+output "nat64_server_ipv4" {
+  description = "IPv4 address of the NAT64/DNS64 server"
+  value       = aws_instance.dns64_nat64.public_ip
+}
+
 output "test_instance_ipv6" {
   description = "IPv6 address of the test instance"
   value       = aws_instance.test_instance.ipv6_addresses[0]
+}
+
+output "ssh_proxy_command_example" {
+  description = "Example SSH ProxyCommand configuration for accessing the test instance via the NAT64 server."
+  value       = <<EOT
+To SSH into the test instance (private instance) via the NAT64 server (public bastion),
+add the following to your ~/.ssh/config file:
+
+Host nat64-server
+  HostName ${aws_instance.dns64_nat64.public_ip}
+  User admin # Or your instance's user, e.g., ec2-user
+  # Add your IdentityFile if not default, e.g., IdentityFile ~/.ssh/terraform-network5-key
+
+Host test-instance-private
+  HostName ${aws_instance.test_instance.ipv6_addresses[0]} # Using IPv6 address
+  User admin # Or your instance's user
+  ProxyCommand ssh -W %h:%p nat64-server
+  # Add your IdentityFile if not default, e.g., IdentityFile ~/.ssh/terraform-network5-key
+
+Then you can connect using: ssh test-instance-private
+
+Alternatively, for a one-time command:
+ssh -o ProxyCommand="ssh -W %h:%p admin@${aws_instance.dns64_nat64.public_ip}" admin@${aws_instance.test_instance.ipv6_addresses[0]}
+(Replace 'admin' with the correct username for your AMI if different, and ensure your SSH key is added to the ssh-agent or specified with -i)
+EOT
 }

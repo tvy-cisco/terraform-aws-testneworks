@@ -1,11 +1,14 @@
 #!/bin/bash
 
 # Update system and install test tools
-apt-get update
-apt-get install -y dnsutils curl net-tools iputils-ping
+sudo DEBIAN_FRONTEND=noninteractive apt-get update -yq
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq dnsutils curl net-tools iputils-ping
+
+# Back up original resolv.conf
+sudo cp /etc/resolv.conf /etc/resolv.conf.backup
 
 # Configure DNS to use NAT64/DNS64 server
-cat > /etc/resolv.conf <<EOF
+sudo cat > /etc/resolv.conf <<EOF
 nameserver ${dns64_server_ipv6}
 EOF
 
