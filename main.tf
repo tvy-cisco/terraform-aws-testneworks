@@ -6,12 +6,7 @@ provider "aws" {
 ###################
 # VPC Resources
 ###################
-
-resource "aws_vpc" "terraform_vpc" {
-  cidr_block                       = "10.0.0.0/16"
-  assign_generated_ipv6_cidr_block = true
-
-
+data "aws_vpc" "terraform_vpc" {
   tags = {
     Name = "terraform-vpc"
   }
