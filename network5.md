@@ -8,6 +8,7 @@ IPv6 -------------------+              |
                         +--------------+
 
 Expectations:
+
 * IPv4 remote resolvers can be reached using NAT64 address mapping
 * IPv6 remote resolvers can be reached
 * IPv6 local resolvers can be reached
