@@ -130,12 +130,21 @@ resource "aws_security_group" "dns64_nat64" {
     description      = "DNS queries"
   }
 
+    # Add TCP DNS for large responses
+  ingress {
+    from_port        = 53
+    to_port          = 53
+    protocol         = "tcp"
+    ipv6_cidr_blocks = [aws_vpc.terraform_vpc.ipv6_cidr_block]
+    description      = "DNS queries TCP from VPC"
+  }
+
   # ICMPv6 (ping6)
   ingress {
     from_port        = -1
     to_port          = -1
     protocol         = "58"     # ICMPv6 protocol number
-    ipv6_cidr_blocks = ["::/0"] # Allow from anywhere
+    ipv6_cidr_blocks = [aws_vpc.terraform_vpc.ipv6_cidr_block]
     description      = "ICMPv6 (ping6)"
   }
 
@@ -234,10 +243,10 @@ resource "aws_key_pair" "deployer" {
   public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII4BHU0dKBfL6sFaFHdqHeQOrzj9cmAwWpLMAvN0DCys sshahary@cisco.com"
 }
 
-resource "aws_key_pair" "thomas_key" {
-  key_name   = "thomas_key"
-  public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOGZx8IAu+Wki/2mmBDlj5ICeut+tsuPo8cu5tRC0tN4 tvy@cisco.com"
-}
+#resource "aws_key_pair" "thomas_key" {
+#  key_name   = "thomas_key"
+#  public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOGZx8IAu+Wki/2mmBDlj5ICeut+tsuPo8cu5tRC0tN4 tvy@cisco.com"
+#}
 
 ###################
 # EC2 Instances
@@ -250,7 +259,7 @@ resource "aws_instance" "dns64_nat64" {
   ipv6_address_count     = 1
   source_dest_check      = false # Required for NAT functionality
   vpc_security_group_ids = [aws_security_group.dns64_nat64.id]
-  key_name               = aws_key_pair.thomas_key.key_name # Add this line
+  key_name               = aws_key_pair.deployer.key_name # Add this line
 
   user_data = file("${path.module}/scripts/dns64_nat64_setup.sh")
 

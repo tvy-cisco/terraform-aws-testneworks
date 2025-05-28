@@ -4,7 +4,7 @@
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get upgrade -y
-apt-get install -y unbound tayga net-tools iptables-persistent
+apt-get install -y unbound tayga net-tools iptables-persistent dnsutils
 
 # Define the primary network interface
 PRIMARY_INTERFACE="ens5"
@@ -64,17 +64,21 @@ sysctl -p /etc/sysctl.d/30-ipv6-forward.conf
 # ip -6 route add 64:ff9b::/96 dev nat64
 
 # Add iptables rules for NAT64 (IPv4 NAT)
-# This rule will NAT traffic from Tayga's dynamic pool (192.168.255.0/24)
-# Tayga itself might also add a similar rule for 192.168.255.0/24 if its service handles it.
-iptables -t nat -F POSTROUTING # Flush existing POSTROUTING rules to avoid duplicates if script runs multiple times
+iptables -t nat -F POSTROUTING
 iptables -t nat -A POSTROUTING -o $PRIMARY_INTERFACE -s 192.168.255.0/24 -j MASQUERADE
 iptables-save > /etc/iptables/rules.v4
 
+# Add ip6tables NAT66 masquerade rule
+# This will translate any IPv6 source (e.g. private ULA or VPC-global) on egress
+ip6tables -t nat -F POSTROUTING
+ip6tables -t nat -A POSTROUTING -o $PRIMARY_INTERFACE -j MASQUERADE
+
 # Add ip6tables FORWARD rules
-# These allow IPv6 traffic to be forwarded between the nat64 interface and the primary interface.
-ip6tables -F FORWARD # Flush existing FORWARD rules
+ip6tables -F FORWARD
 ip6tables -A FORWARD -i $PRIMARY_INTERFACE -o nat64 -m state --state RELATED,ESTABLISHED -j ACCEPT
 ip6tables -A FORWARD -i nat64 -o $PRIMARY_INTERFACE -j ACCEPT
+
+# Save IPv6 rules (including NAT66)
 ip6tables-save > /etc/iptables/rules.v6
 
 # Start services using systemd if available, which is preferred
@@ -84,16 +88,23 @@ ip6tables-save > /etc/iptables/rules.v6
 systemctl enable unbound
 systemctl restart unbound
 
-# For Tayga, it's better to use its service file if it exists
-# The service file usually handles mktun, IP configuration, and routing.
-# If you manually run `tayga -d`, ensure it doesn't conflict with a service trying to manage it.
-if systemctl list-units --full -all | grep -q 'tayga.service'; then
-    echo "Tayga service found. Enabling and restarting."
+systemctl enable tayga
+systemctl restart tayga
 
-    systemctl enable tayga
-    systemctl restart tayga
-else
-    echo "Tayga service not found"
-fi
+# Add to your setup script - simple validation
+echo "Validating setup..."
+systemctl is-active unbound || echo "WARNING: Unbound not running"
+systemctl is-active tayga || echo "WARNING: Tayga not running"
+ip link show nat64 || echo "WARNING: NAT64 interface not found"
+
+# Add to NAT64 instance for easy debugging
+cat > /home/admin/status.sh <<'EOF'
+#!/bin/bash
+echo "=== NAT64/DNS64 Status ==="
+echo "Unbound: $(systemctl is-active unbound)"
+echo "Tayga: $(systemctl is-active tayga)"
+echo "NAT64 interface: $(ip link show nat64 2>/dev/null | grep UP || echo "DOWN")"
+echo "IPv6 forwarding: $(cat /proc/sys/net/ipv6/conf/all/forwarding)"
+EOF
 
 echo "NAT64/DNS64 setup script finished."

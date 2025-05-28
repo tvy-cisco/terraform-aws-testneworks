@@ -1,11 +1,21 @@
 #!/bin/bash
 
 # Update system and install test tools
-sudo DEBIAN_FRONTEND=noninteractive apt-get update -yq
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq dnsutils curl net-tools iputils-ping
-
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get upgrade -y
+apt-get install -y unbound dnsutils
 # Back up original resolv.conf
 sudo cp /etc/resolv.conf /etc/resolv.conf.backup
+
+# Stop systemd-resolved if it's active to allow manual resolv.conf changes
+if systemctl is-active --quiet systemd-resolved; then
+    echo "Stopping systemd-resolved..."
+    sudo systemctl stop systemd-resolved
+    # Note: On some systems, systemd-resolved might restart or /etc/resolv.conf might be a symlink
+    # that needs to be removed and recreated as a regular file.
+    # For this test script, stopping it is usually sufficient.
+fi
 
 # Configure DNS to use NAT64/DNS64 server
 sudo cat > /etc/resolv.conf <<EOF
@@ -13,7 +23,7 @@ nameserver ${dns64_server_ipv6}
 EOF
 
 # Create test script
-cat > /home/ubuntu/test.sh <<'EOF'
+cat > /home/admin/test.sh <<'EOF'
 #!/bin/bash
 
 echo "Running Network 5 test cases..."
@@ -39,4 +49,4 @@ curl -v http://[2a00:801:f::195]/
 curl -v http://ipv6-only.tlund.se/
 EOF
 
-chmod +x /home/ubuntu/test.sh
+chmod +x /home/admin/test.sh
