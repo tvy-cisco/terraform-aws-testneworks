@@ -27,6 +27,7 @@ resource "aws_instance" "windows_test_instance" {
   subnet_id              = data.aws_subnet.private_subnet_5.id
   vpc_security_group_ids = [data.aws_security_group.test_instance.id]
 
+  user_data = file("${path.module}/scripts/windows_test_instance_setup.ps1")
   tags = {
     Name = "WindowsEC2Instance"
   }
