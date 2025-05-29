@@ -187,30 +187,29 @@ resource "aws_security_group" "test_instance" {
 
   # ICMPv6 (ping6)
   ingress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
+    from_port        = -1
+    to_port          = -1
+    protocol         = "58" # ICMPv6 protocol number
     ipv6_cidr_blocks = ["::/0"]
     description      = "ICMPv6 (ping6)"
   }
 
-  #
-  # # DNS queries (for dig)
-  # egress {
-  #   from_port        = 53
-  #   to_port          = 53
-  #   protocol         = "udp"
-  #   ipv6_cidr_blocks = ["::/0"]
-  #   description      = "DNS queries (UDP)"
-  # }
-  #
-  # egress {
-  #   from_port        = 53
-  #   to_port          = 53
-  #   protocol         = "tcp"
-  #   ipv6_cidr_blocks = ["::/0"]
-  #   description      = "DNS queries (TCP)"
-  # }
+  # DNS queries (for dig)
+  egress {
+    from_port        = 53
+    to_port          = 53
+    protocol         = "udp"
+    ipv6_cidr_blocks = ["::/0"]
+    description      = "DNS queries (UDP)"
+  }
+
+  egress {
+    from_port        = 53
+    to_port          = 53
+    protocol         = "tcp"
+    ipv6_cidr_blocks = ["::/0"]
+    description      = "DNS queries (TCP)"
+  }
 
   # All outbound traffic
   egress {
@@ -221,23 +220,23 @@ resource "aws_security_group" "test_instance" {
     description      = "Allow all outbound traffic"
   }
 
-  # # IPV6 SSH access 
-  # ingress {
-  #   from_port        = 22
-  #   to_port          = 22
-  #   protocol         = "tcp"
-  #   ipv6_cidr_blocks = ["2603:5004:13:a::/64", "2603:5004:13:9::/64"]
-  #   description      = "SSH access VPN CIDR IPV6"
-  # }
-  #
-  # # IPV6 RDP access
-  # ingress {
-  #   from_port        = 3389
-  #   to_port          = 3389
-  #   protocol         = "tcp"
-  #   ipv6_cidr_blocks = ["2603:5004:13:9::/64", "2603:5004:13:a::/64"]
-  #   description      = "RDP access VPN CIDR IPV6"
-  # }
+  # IPV6 SSH access 
+  ingress {
+    from_port        = 22
+    to_port          = 22
+    protocol         = "tcp"
+    ipv6_cidr_blocks = ["2603:5004:13:a::/64", "2603:5004:13:9::/64"]
+    description      = "SSH access VPN CIDR IPV6"
+  }
+
+  # IPV6 RDP access
+  egress {
+    from_port        = 3389
+    to_port          = 3389
+    protocol         = "tcp"
+    ipv6_cidr_blocks = ["2603:5004:13:9::/64", "2603:5004:13:a::/64"]
+    description      = "RDP access VPN CIDR IPV6"
+  }
 
   tags = {
     Name = "terraform-Network5-test-sg"
