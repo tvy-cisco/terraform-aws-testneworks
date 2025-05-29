@@ -110,15 +110,15 @@ resource "aws_security_group" "dns64_nat64" {
 
   # SSH access from specific IPs
   ingress {
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-    cidr_blocks      = [
-      "151.186.183.17/32",    # Added IP
-      "151.186.183.81/32",    # Added IP
-      "151.186.192.0/20"      # Added IP range
+    from_port = 22
+    to_port   = 22
+    protocol  = "tcp"
+    cidr_blocks = [
+      "151.186.183.17/32", # Added IP
+      "151.186.183.81/32", # Added IP
+      "151.186.192.0/20"   # Added IP range
     ]
-    description      = "SSH access from specific IPv4 addresses"
+    description = "SSH access from specific IPv4 addresses"
   }
 
   # DNS queries
@@ -130,7 +130,7 @@ resource "aws_security_group" "dns64_nat64" {
     description      = "DNS queries"
   }
 
-    # Add TCP DNS for large responses
+  # Add TCP DNS for large responses
   ingress {
     from_port        = 53
     to_port          = 53
@@ -143,7 +143,7 @@ resource "aws_security_group" "dns64_nat64" {
   ingress {
     from_port        = -1
     to_port          = -1
-    protocol         = "58"     # ICMPv6 protocol number
+    protocol         = "58" # ICMPv6 protocol number
     ipv6_cidr_blocks = [aws_vpc.terraform_vpc.ipv6_cidr_block]
     description      = "ICMPv6 (ping6)"
   }
@@ -185,40 +185,32 @@ resource "aws_security_group" "test_instance" {
   name   = "terraform-Network5-test"
   vpc_id = aws_vpc.terraform_vpc.id
 
-  # SSH access
-  ingress {
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-    ipv6_cidr_blocks = ["::/0"]
-    description      = "SSH access"
-  }
-
   # ICMPv6 (ping6)
   ingress {
-    from_port        = -1
-    to_port          = -1
-    protocol         = "58"  # ICMPv6 protocol number
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
     ipv6_cidr_blocks = ["::/0"]
     description      = "ICMPv6 (ping6)"
   }
 
-  # DNS queries (for dig)
-  egress {
-    from_port        = 53
-    to_port          = 53
-    protocol         = "udp"
-    ipv6_cidr_blocks = ["::/0"]
-    description      = "DNS queries (UDP)"
-  }
-  
-  egress {
-    from_port        = 53
-    to_port          = 53
-    protocol         = "tcp"
-    ipv6_cidr_blocks = ["::/0"]
-    description      = "DNS queries (TCP)"
-  }
+  #
+  # # DNS queries (for dig)
+  # egress {
+  #   from_port        = 53
+  #   to_port          = 53
+  #   protocol         = "udp"
+  #   ipv6_cidr_blocks = ["::/0"]
+  #   description      = "DNS queries (UDP)"
+  # }
+  #
+  # egress {
+  #   from_port        = 53
+  #   to_port          = 53
+  #   protocol         = "tcp"
+  #   ipv6_cidr_blocks = ["::/0"]
+  #   description      = "DNS queries (TCP)"
+  # }
 
   # All outbound traffic
   egress {
@@ -228,6 +220,24 @@ resource "aws_security_group" "test_instance" {
     ipv6_cidr_blocks = ["::/0"]
     description      = "Allow all outbound traffic"
   }
+
+  # # IPV6 SSH access 
+  # ingress {
+  #   from_port        = 22
+  #   to_port          = 22
+  #   protocol         = "tcp"
+  #   ipv6_cidr_blocks = ["2603:5004:13:a::/64", "2603:5004:13:9::/64"]
+  #   description      = "SSH access VPN CIDR IPV6"
+  # }
+  #
+  # # IPV6 RDP access
+  # ingress {
+  #   from_port        = 3389
+  #   to_port          = 3389
+  #   protocol         = "tcp"
+  #   ipv6_cidr_blocks = ["2603:5004:13:9::/64", "2603:5004:13:a::/64"]
+  #   description      = "RDP access VPN CIDR IPV6"
+  # }
 
   tags = {
     Name = "terraform-Network5-test-sg"
@@ -253,7 +263,7 @@ resource "aws_key_pair" "deployer" {
 ###################
 
 resource "aws_instance" "dns64_nat64" {
-  ami                    = "ami-03e383d33727f4804" 
+  ami                    = "ami-03e383d33727f4804"
   instance_type          = "t3.small"
   subnet_id              = aws_subnet.public_subnet_5.id
   ipv6_address_count     = 1
@@ -327,3 +337,4 @@ ssh -o ProxyCommand="ssh -W %h:%p admin@${aws_instance.dns64_nat64.public_ip}" a
 (Replace 'admin' with the correct username for your AMI if different, and ensure your SSH key is added to the ssh-agent or specified with -i)
 EOT
 }
+
