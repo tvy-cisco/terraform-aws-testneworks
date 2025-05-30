@@ -47,7 +47,7 @@ resource "aws_instance" "windows_jumpbox" {
   ami                    = "ami-0c481fef9aec55a67" # Darren's Base Windows AMI
   instance_type          = "m5.large"
   key_name               = "thomas_laptop"
-  subnet_id              = aws_subnet.public_subnet_5.id
+  subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.jumpbox_sg.id]
 
   # Disables duo so that RDP as onprem-jenkins can be used
