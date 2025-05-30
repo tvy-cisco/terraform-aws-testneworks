@@ -50,12 +50,20 @@ resource "aws_instance" "windows_jumpbox" {
   subnet_id              = aws_subnet.public_subnet_5.id
   vpc_security_group_ids = [aws_security_group.jumpbox_sg.id]
 
+  # Disables duo so that RDP as onprem-jenkins can be used
+  user_data = <<-EOF
+    regsvr32 /u "C:\Program Files\Duo Security\WindowsLogon\DuoCredProv.dll"
+    regsvr32 /u "C:\Program Files\Duo Security\WindowsLogon\DuoCredFilter.dll"
+    New-NetFirewallRule -DisplayName "Allow IPv4 Ping" -Direction Inbound -Protocol ICMPv4 -Action Allow
+    New-NetFirewallRule -DisplayName "Allow IPv6 Ping" -Direction Inbound -Protocol ICMPv6 -Action Allow
+  EOF
+
   tags = {
     Name = "WindowsJumpboxInstance"
   }
 }
 
-output "jumpbox_output" {
+output "jumpbox_ip" {
   description = "jumpbox output ipv4"
   value       = aws_instance.windows_jumpbox.public_ip
 }
