@@ -58,11 +58,11 @@ resource "aws_security_group" "test_instance" {
 
   # Allow SSH from jumpbox security group
   ingress {
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    ipv6_cidr_blocks = ["::/0"]
-    description     = "SSH access from jumpbox security group"
+    from_port        = 22
+    to_port          = 22
+    protocol         = "tcp"
+    ipv6_cidr_blocks = [aws_security_group.jumpbox_sg.id]
+    description      = "SSH access from jumpbox security group"
   }
 
   #Allow RDP from jumpbox security group
@@ -92,7 +92,7 @@ resource "aws_instance" "linux_test_instance" {
   vpc_security_group_ids = [aws_security_group.test_instance.id]
 
   user_data = templatefile("${path.module}/scripts/test_instance_setup.sh.tpl", {
-    dns64_server_ipv6     = aws_instance.n5_gateway.ipv6_addresses[0],
+    dns64_server_ipv6      = aws_instance.n5_gateway.ipv6_addresses[0],
     deploy_ssh_keys_script = file("${path.module}/scripts/deploy_ssh_keys.sh")
   })
 
