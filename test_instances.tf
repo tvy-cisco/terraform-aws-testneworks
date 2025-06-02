@@ -1,8 +1,8 @@
 
 locals {
   gateway_network_interfaces = {
-    "n5"   = aws_instance.n5_gateway.primary_network_interface_id
-    "n4"   = aws_instance.n4_gateway.primary_network_interface_id
+    "n5" = aws_instance.n5_gateway.primary_network_interface_id
+    "n4" = aws_instance.n4_gateway.primary_network_interface_id
   }
 }
 
@@ -90,10 +90,10 @@ resource "aws_instance" "linux_test_instance" {
   subnet_id              = aws_subnet.private_subnet_5.id
   ipv6_address_count     = 1
   vpc_security_group_ids = [aws_security_group.test_instance.id]
-  key_name               = aws_key_pair.deployer.key_name // Changed to use the deployer key
 
   user_data = templatefile("${path.module}/scripts/test_instance_setup.sh.tpl", {
-    dns64_server_ipv6 = aws_instance.n5_gateway.ipv6_addresses[0]
+    dns64_server_ipv6     = aws_instance.n5_gateway.ipv6_addresses[0],
+    deploy_ssh_keys_script = file("${path.module}/scripts/deploy_ssh_keys.sh")
   })
 
   tags = {

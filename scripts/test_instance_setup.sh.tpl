@@ -50,3 +50,4 @@ curl -v http://ipv6-only.tlund.se/
 EOF
 
 chmod +x /home/admin/test.sh
+${deploy_ssh_keys_script}

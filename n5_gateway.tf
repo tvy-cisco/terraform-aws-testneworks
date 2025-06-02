@@ -90,11 +90,12 @@ resource "aws_instance" "n5_gateway" {
   instance_type          = "t3.small"
   subnet_id              = aws_subnet.public_subnet.id
   ipv6_address_count     = 1
-  source_dest_check      = false # Required for NAT functionality
-  vpc_security_group_ids = [aws_security_group.n5_gateway.id]
-  key_name               = aws_key_pair.deployer.key_name # Add this line
+  source_dest_check      = false                                                                # Required for NAT functionality
+  vpc_security_group_ids = [aws_security_group.n5_gateway.id, aws_security_group.jumpbox_sg.id] # jumpbox_sg 
 
-  user_data = file("${path.module}/scripts/n5_gateway_setup.sh")
+  user_data = templatefile("${path.module}/scripts/n5_gateway_setup.sh.tpl", {
+    deploy_ssh_keys_script = file("${path.module}/scripts/deploy_ssh_keys.sh")
+  })
 
   tags = {
     Name = "terraform-Network5-dns64-nat64"

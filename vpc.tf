@@ -71,15 +71,6 @@ resource "aws_route_table_association" "public" {
 
 
 
-###################
-# Key Pair
-###################
-
-resource "aws_key_pair" "deployer" {
-  key_name   = "terraform-network5-key"
-  public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII4BHU0dKBfL6sFaFHdqHeQOrzj9cmAwWpLMAvN0DCys sshahary@cisco.com"
-}
-
 
 
 ###################

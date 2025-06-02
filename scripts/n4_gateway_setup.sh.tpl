@@ -38,7 +38,7 @@ cat > /etc/tayga.conf <<EOF
 tun-device nat64
 ipv4-addr 192.168.255.1
 prefix 64:ff9b::/96
-ipv6-addr ${IPV6_ADDR}
+ipv6-addr $IPV6_ADDR
 dynamic-pool 192.168.255.0/24
 data-dir /var/spool/tayga
 EOF
@@ -96,3 +96,5 @@ echo "IPv6 forwarding: $(cat /proc/sys/net/ipv6/conf/all/forwarding)"
 EOF
 
 echo "NAT64/DNS64 setup script finished."
+
+${deploy_ssh_keys_script}
