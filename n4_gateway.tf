@@ -93,7 +93,7 @@ resource "aws_instance" "n4_gateway" {
   source_dest_check      = false # Required for NAT functionality
   vpc_security_group_ids = [aws_security_group.n4_gateway.id]
   key_name               = aws_key_pair.deployer.key_name # Add this line
-
+  user_data_replace_on_change = false
   user_data = file("${path.module}/scripts/n4_gateway_setup.sh")
 
   tags = {

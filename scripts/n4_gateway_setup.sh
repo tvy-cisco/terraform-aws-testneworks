@@ -29,7 +29,7 @@ server:
     do-tcp: yes
     dns64-prefix: 64:ff9b::/96
     dns64-synthall: yes
-    module-config: "validator dns64 iterator"
+    module-config: "dns64 validator iterator"
 EOF
 
 # Configure Tayga for NAT64
@@ -47,9 +47,11 @@ EOF
 mkdir -p /var/spool/tayga
 chown _tayga:_tayga /var/spool/tayga || true # Allow to fail if user _tayga doesn't exist yet or perms are already ok
 
-# Enable IPv6 forwarding
-echo 'net.ipv6.conf.all.forwarding=1' > /etc/sysctl.d/30-ipv6-forward.conf
-sysctl -p /etc/sysctl.d/30-ipv6-forward.conf
+# Enable IPv4 and IPv6 forwarding
+echo 'net.ipv4.ip_forward=1' | sudo tee /etc/sysctl.d/30-ipv4-forward.conf
+echo 'net.ipv6.conf.all.forwarding=1' | sudo tee /etc/sysctl.d/30-ipv6-forward.conf
+sudo sysctl -p /etc/sysctl.d/30-ipv4-forward.conf
+sudo sysctl -p /etc/sysctl.d/30-ipv6-forward.conf
 
 # Configure Tayga TUN interface (manual steps, often handled by Tayga service if available)
 # tayga --mktun # This is often done by the init script/service
