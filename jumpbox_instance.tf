@@ -24,8 +24,16 @@ resource "aws_security_group" "jumpbox_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["151.186.183.17/32", "151.186.183.81/32", "151.186.192.0/20"]
+    cidr_blocks = ["151.186.192.0/20"]
     description = "SSH access VPN CIDR IPV4"
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["173.38.117.64/27"]
+    description = "SSH access Blizzard CIDR IPV4"
   }
 
 
@@ -34,8 +42,16 @@ resource "aws_security_group" "jumpbox_sg" {
     from_port   = 3389
     to_port     = 3389
     protocol    = "tcp"
-    cidr_blocks = ["151.186.183.17/32", "151.186.183.81/32", "151.186.192.0/20"]
+    cidr_blocks = ["151.186.192.0/20"]
     description = "RDP access VPN CIDR IPV4"
+  }
+
+  ingress {
+    from_port   = 3389
+    to_port     = 3389
+    protocol    = "tcp"
+    cidr_blocks = ["173.38.117.64/27"]
+    description = "RDP access Blizzard CIDR IPV4"
   }
 
   tags = {
@@ -50,15 +66,7 @@ resource "aws_instance" "windows_jumpbox" {
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.jumpbox_sg.id]
 
-  # Disables duo so that RDP as onprem-jenkins can be used
-  user_data = <<-EOT
-  <powershell>
-    regsvr32 /u "C:\Program Files\Duo Security\WindowsLogon\DuoCredProv.dll"
-    regsvr32 /u "C:\Program Files\Duo Security\WindowsLogon\DuoCredFilter.dll"
-    New-NetFirewallRule -DisplayName "Allow IPv4 Ping" -Direction Inbound -Protocol ICMPv4 -Action Allow
-    New-NetFirewallRule -DisplayName "Allow IPv6 Ping" -Direction Inbound -Protocol ICMPv6 -Action Allow
-  </powershell>
-  EOT
+  user_data = file("${path.module}/scripts/deploy_ssh_keys.ps1")
 
   tags = {
     Name = "WindowsJumpboxInstance"

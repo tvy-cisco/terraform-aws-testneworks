@@ -58,11 +58,11 @@ resource "aws_security_group" "test_instance" {
 
   # Allow SSH from jumpbox security group
   ingress {
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-    ipv6_cidr_blocks = [aws_security_group.jumpbox_sg.id]
-    description      = "SSH access from jumpbox security group"
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [aws_security_group.jumpbox_sg.id]
+    description     = "SSH access from jumpbox security group"
   }
 
   #Allow RDP from jumpbox security group
@@ -110,7 +110,8 @@ resource "aws_instance" "windows_test_instance_network5" {
 
   user_data = templatefile("${path.module}/scripts/windows_test_instance_setup.ps1.tpl",
     {
-      dns64_server_ipv6 = aws_instance.n5_gateway.ipv6_addresses[0]
+      dns64_server_ipv6  = aws_instance.n5_gateway.ipv6_addresses[0],
+      deploy_keys_script = file("${path.module}/scripts/deploy_ssh_keys.ps1")
   })
   tags = {
     Name = "Windows Test Instance Network5"

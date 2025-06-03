@@ -86,6 +86,9 @@ output "ssh_proxy_command_example" {
 To SSH into the test instance
 Linux Test Instance via Network 5 Gateway server, use the following command:
 ssh -o ProxyCommand="ssh -W [%h]:%p admin@${aws_instance.n5_gateway.public_ip}" admin@${aws_instance.linux_test_instance.ipv6_addresses[0]}
+  
+Linux Test Instance via Windows Jumpbox, use the following command:
+ssh -o ProxyCommand="ssh -W [%h]:%p onprem-jenkins@${aws_instance.windows_jumpbox.public_ip}" admin@${aws_instance.linux_test_instance.ipv6_addresses[0]}
 EOT
 }
 
