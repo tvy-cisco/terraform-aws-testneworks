@@ -1,5 +1,7 @@
 #!/bin/bash
 
+${deploy_ssh_keys_script}
+
 # Update system and install test tools
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -50,4 +52,3 @@ curl -v http://ipv6-only.tlund.se/
 EOF
 
 chmod +x /home/admin/test.sh
-${deploy_ssh_keys_script}

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+${deploy_ssh_keys_script}
+
 # Update system and install required packages
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -97,4 +99,3 @@ EOF
 
 echo "NAT64/DNS64 setup script finished."
 
-${deploy_ssh_keys_script}
