@@ -1,9 +1,19 @@
+
+locals {
+  gateway_network_interfaces = {
+    "n5"   = aws_instance.n5_gateway.primary_network_interface_id
+    "n4"   = aws_instance.n4_gateway.primary_network_interface_id
+  }
+}
+
+
+
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.terraform_vpc.id
 
   route {
     ipv6_cidr_block      = "::/0"
-    network_interface_id = aws_instance.dns64_nat64.primary_network_interface_id
+    network_interface_id = local.gateway_network_interfaces[var.selected_network]
   }
 
   tags = {
@@ -51,7 +61,7 @@ resource "aws_security_group" "test_instance" {
     from_port       = 22
     to_port         = 22
     protocol        = "tcp"
-    security_groups = [aws_security_group.jumpbox_sg.id] # Assuming jumpbox_sg is defined in your configuration
+    ipv6_cidr_blocks = ["::/0"]
     description     = "SSH access from jumpbox security group"
   }
 
@@ -74,7 +84,7 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
-resource "aws_instance" "linux_test_instance_network5" {
+resource "aws_instance" "linux_test_instance" {
   ami                    = "ami-03e383d33727f4804"
   instance_type          = "t3.small"
   subnet_id              = aws_subnet.private_subnet_5.id
@@ -83,7 +93,7 @@ resource "aws_instance" "linux_test_instance_network5" {
   key_name               = aws_key_pair.deployer.key_name // Changed to use the deployer key
 
   user_data = templatefile("${path.module}/scripts/test_instance_setup.sh.tpl", {
-    dns64_server_ipv6 = aws_instance.dns64_nat64.ipv6_addresses[0]
+    dns64_server_ipv6 = aws_instance.n5_gateway.ipv6_addresses[0]
   })
 
   tags = {
@@ -100,7 +110,7 @@ resource "aws_instance" "windows_test_instance_network5" {
 
   user_data = templatefile("${path.module}/scripts/windows_test_instance_setup.ps1.tpl",
     {
-      dns64_server_ipv6 = aws_instance.dns64_nat64.ipv6_addresses[0]
+      dns64_server_ipv6 = aws_instance.n5_gateway.ipv6_addresses[0]
   })
   tags = {
     Name = "Windows Test Instance Network5"
@@ -108,10 +118,10 @@ resource "aws_instance" "windows_test_instance_network5" {
 }
 
 output "windows_test_ip" {
-  description = "windows test instance ipv6"
+  description = "IPv6 address of windows test instance"
   value       = aws_instance.windows_test_instance_network5.ipv6_addresses[0]
 }
 output "linux_test_ip" {
-  description = "IPv6 address of the test instance"
-  value       = aws_instance.linux_test_instance_network5.ipv6_addresses[0]
+  description = "IPv6 address of the linux test instance"
+  value       = aws_instance.linux_test_instance.ipv6_addresses[0]
 }
