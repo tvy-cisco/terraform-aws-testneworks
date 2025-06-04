@@ -71,15 +71,6 @@ resource "aws_route_table_association" "public" {
 
 
 
-###################
-# Key Pair
-###################
-
-resource "aws_key_pair" "deployer" {
-  key_name   = "terraform-network5-key"
-  public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII4BHU0dKBfL6sFaFHdqHeQOrzj9cmAwWpLMAvN0DCys sshahary@cisco.com"
-}
-
 
 
 ###################
@@ -95,6 +86,9 @@ output "ssh_proxy_command_example" {
 To SSH into the test instance
 Linux Test Instance via Network 5 Gateway server, use the following command:
 ssh -o ProxyCommand="ssh -W [%h]:%p admin@${aws_instance.n5_gateway.public_ip}" admin@${aws_instance.linux_test_instance.ipv6_addresses[0]}
+  
+Linux Test Instance via Windows Jumpbox, use the following command:
+ssh -o ProxyCommand="ssh -W [%h]:%p onprem-jenkins@${aws_instance.windows_jumpbox.public_ip}" admin@${aws_instance.linux_test_instance.ipv6_addresses[0]}
 EOT
 }
 

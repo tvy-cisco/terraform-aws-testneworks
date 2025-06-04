@@ -1,5 +1,7 @@
 #!/bin/bash
 
+${deploy_ssh_keys_script}
+
 # Update system and install test tools
 export DEBIAN_FRONTEND=noninteractive
 apt-get update

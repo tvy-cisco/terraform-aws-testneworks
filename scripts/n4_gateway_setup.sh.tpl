@@ -1,5 +1,7 @@
 #!/bin/bash
 
+${deploy_ssh_keys_script}
+
 # Update system and install required packages
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -28,8 +30,8 @@ server:
     do-udp: yes
     do-tcp: yes
     dns64-prefix: 64:ff9b::/96
-    dns64-synthall: no
-    module-config: "validator dns64 iterator"
+    dns64-synthall: yes
+    module-config: "dns64 validator iterator"
 EOF
 
 # Configure Tayga for NAT64
@@ -38,7 +40,7 @@ cat > /etc/tayga.conf <<EOF
 tun-device nat64
 ipv4-addr 192.168.255.1
 prefix 64:ff9b::/96
-ipv6-addr ${IPV6_ADDR}
+ipv6-addr $IPV6_ADDR
 dynamic-pool 192.168.255.0/24
 data-dir /var/spool/tayga
 EOF
@@ -48,10 +50,10 @@ mkdir -p /var/spool/tayga
 chown _tayga:_tayga /var/spool/tayga || true # Allow to fail if user _tayga doesn't exist yet or perms are already ok
 
 # Enable IPv4 and IPv6 forwarding
-echo 'net.ipv4.ip_forward=1' > /etc/sysctl.d/30-ipv4-forward.conf
-echo 'net.ipv6.conf.all.forwarding=1' > /etc/sysctl.d/30-ipv6-forward.conf
-sysctl -p /etc/sysctl.d/30-ipv4-forward.conf
-sysctl -p /etc/sysctl.d/30-ipv6-forward.conf
+echo 'net.ipv4.ip_forward=1' | sudo tee /etc/sysctl.d/30-ipv4-forward.conf
+echo 'net.ipv6.conf.all.forwarding=1' | sudo tee /etc/sysctl.d/30-ipv6-forward.conf
+sudo sysctl -p /etc/sysctl.d/30-ipv4-forward.conf
+sudo sysctl -p /etc/sysctl.d/30-ipv6-forward.conf
 
 # Configure Tayga TUN interface (manual steps, often handled by Tayga service if available)
 # tayga --mktun # This is often done by the init script/service
@@ -68,18 +70,6 @@ iptables -t nat -F POSTROUTING
 iptables -t nat -A POSTROUTING -o $PRIMARY_INTERFACE -s 192.168.255.0/24 -j MASQUERADE
 iptables-save > /etc/iptables/rules.v4
 
-# Add ip6tables NAT66 masquerade rule
-# This will translate any IPv6 source (e.g. private ULA or VPC-global) on egress
-ip6tables -t nat -F POSTROUTING
-ip6tables -t nat -A POSTROUTING -o $PRIMARY_INTERFACE -j MASQUERADE
-
-# Add ip6tables FORWARD rules
-ip6tables -F FORWARD
-ip6tables -A FORWARD -i $PRIMARY_INTERFACE -o nat64 -m state --state RELATED,ESTABLISHED -j ACCEPT
-ip6tables -A FORWARD -i nat64 -o $PRIMARY_INTERFACE -j ACCEPT
-
-# Save IPv6 rules (including NAT66)
-ip6tables-save > /etc/iptables/rules.v6
 
 # Start services using systemd if available, which is preferred
 # The Tayga package for Debian/Ubuntu should provide a systemd service.
@@ -108,3 +98,4 @@ echo "IPv6 forwarding: $(cat /proc/sys/net/ipv6/conf/all/forwarding)"
 EOF
 
 echo "NAT64/DNS64 setup script finished."
+
