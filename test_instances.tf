@@ -126,3 +126,8 @@ output "linux_test_ip" {
   description = "IPv6 address of the linux test instance"
   value       = aws_instance.linux_test_instance.ipv6_addresses[0]
 }
+
+output "private_rt" {
+  description = "private routing table id"
+  value       = aws_route_table.private.id
+}

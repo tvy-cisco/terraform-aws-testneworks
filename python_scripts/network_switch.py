@@ -1,24 +1,50 @@
 import argparse
-from typing import NamedTuple
+import json
+from typing import List, NamedTuple
 
 import boto3
+import paramiko
+from paramiko.proxy import ProxyCommand
 
 
-def run_command_on_linux_instance(session, instance_id: str, command: str) -> None:
-    ssm = session.client("ssm", region_name="us-west-2")
+# def run_ssm_command(session, instance_id: str, command: str) -> None:
+#     ssm = session.client("ssm", region_name="us-west-2")
+#
+#     response = ssm.send_command(
+#         InstanceIds=[instance_id],
+#         DocumentName="AWS-RunShellScript",
+#         Parameters={"commands": [command]},
+#     )
+#
+#     command_id = response["Command"]["CommandId"]
+#
+#     # To get the output
+#     output = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
+#
+#     print(output["StandardOutputContent"])
+#
+def run_ssh_commands_on_ec2(
+    jumpServerIpv4: str,
+    jumpServerUsername: str,
+    host: str,
+    username: str,
+    commands: List[str],
+) -> None:
+    # Connect to jump host
+    with paramiko.SSHClient() as jump_client:
+        jump_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        jump_client.connect(jumpServerIpv4, username=jumpServerUsername)
 
-    response = ssm.send_command(
-        InstanceIds=[instance_id],
-        DocumentName="AWS-RunShellScript",
-        Parameters={"commands": [command]},
-    )
+        # Open channel from jump host to target
+        transport = jump_client.get_transport()
+        channel = transport.open_channel("direct-tcpip", (host, 22), ("", 0))
+        with paramiko.SSHClient() as client:
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.connect(hostname=host, username=username, sock=channel)
 
-    command_id = response["Command"]["CommandId"]
-
-    # To get the output
-    output = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
-
-    print(output["StandardOutputContent"])
+            for command in commands:
+                _, stdout, _ = client.exec_command(command)
+                print(stdout.read().decode())
 
 
 def run_command_on_windows_instance(session, instance_id: str, command: str) -> None:
@@ -56,27 +82,31 @@ def switch_routing_table(
     print(f"Switched private routing table to {network_interface} for IPv6 traffic.")
 
 
-class InstanceIds(NamedTuple):
+class AwsInfo(NamedTuple):
     private_rt: str
     network5_gateway_interface: str
-    network5_gateway_ip: str
+    network5_gateway_ipv6: str
     network4_gateway_interface: str
-    network4_gateway_ip: str
-    linux_test_instance: str
-    windows_test_instance: str
+    network4_gateway_ipv6: str
+    linux_test_instance_ipv6: str
+    windows_test_instance_ipv6: str
+    jumpbox_instance_ipv4: str
 
 
-def get_instance_ids() -> InstanceIds:
-    # TODO read ../.terraform.tfstate to get info to get better info
-    # for now just hardcode the values
-    return InstanceIds(
-        private_rt="rtb-024ed52d79312f481",
-        network5_gateway_interface="eni-0567eb468289a7719",
-        network5_gateway_ip="2600:1f14:8e3:fc00:357e:dc53:3cf5:bd8f",
-        network4_gateway_interface="eni-05ef45c1905165539",
-        network4_gateway_ip="2600:1f14:8e3:fc00:ab74:df87:641a:a825",
-        linux_test_instance="i-00e87fe3236e410b8",
-        windows_test_instance="i-08f0b661979dfe4f7",
+def get_aws_info() -> AwsInfo:
+    with open("../terraform.tfstate", "r") as f:
+        tfstate = json.load(f)
+    outputs = tfstate.get("outputs", [])
+
+    return AwsInfo(
+        private_rt=outputs["private_rt"]["value"],
+        network5_gateway_interface=outputs["n5_gateway_network_interface_id"]["value"],
+        network4_gateway_interface=outputs["n4_gateway_network_interface_id"]["value"],
+        network5_gateway_ipv6=outputs["n5_gateway_ipv6"]["value"],
+        network4_gateway_ipv6=outputs["n4_gateway_ipv6"]["value"],
+        linux_test_instance_ipv6=outputs["linux_test_ip"]["value"],
+        windows_test_instance_ipv6=outputs["windows_test_ip"]["value"],
+        jumpbox_instance_ipv4=outputs["jumpbox_ip"]["value"],
     )
 
 
@@ -95,7 +125,7 @@ def main():
     if args.network_test_number < 1 or args.network_test_number > 7:
         raise ValueError("Network test number must be between 1 and 7.")
 
-    instance_ids = get_instance_ids()
+    aws_info = get_aws_info()
     session = boto3.Session(profile_name="strln")
 
     match args.network_test_number:
@@ -103,27 +133,63 @@ def main():
             print("Switching to network test 4.")
             switch_routing_table(
                 session=session,
-                routing_table_id=instance_ids.private_rt,
-                network_interface=instance_ids.network4_gateway_interface,
+                routing_table_id=aws_info.private_rt,
+                network_interface=aws_info.network4_gateway_interface,
             )
-            # run commands on linux test instance to turn on IPv6 and off IPv4
-            run_command_on_linux_instance(
-                session=session,
-                instance_id=instance_ids.linux_test_instance,
-                command="sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0 && sudo sysctl -w net.ipv4.conf.all.disable_ipv4=1",
+            run_ssh_commands_on_ec2(
+                jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
+                jumpServerUsername="onprem-jenkins",
+                host=aws_info.linux_test_instance_ipv6,
+                username="admin",
+                commands=[
+                    "sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0",
+                    "sudo sysctl -w net.ipv4.conf.all.disable_ipv4=1",
+                    f"echo 'nameserver {aws_info.network4_gateway_ipv6}' | sudo tee /etc/resolv.conf > /dev/null",
+                ],
             )
-            # run commands to rewrite resolv.conf to use instance_ids.network4_gateway_ip
-            run_command_on_linux_instance(
-                session=session,
-                instance_id=instance_ids.linux_test_instance,
-                command=f"echo 'nameserver {instance_ids.network4_gateway_ip}' | sudo tee /etc/resolv.conf > /dev/null",
+            run_ssh_commands_on_ec2(
+                jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
+                jumpServerUsername="onprem-jenkins",
+                host=aws_info.windows_test_instance_ipv6,
+                username="onprem-jenkins",
+                commands=[
+                    "powershell -Command Disable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip",
+                    "powershell -Command Enable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip6",
+                    f"powershell -Command Set-DnsClientServerAddress -InterfaceAlias 'Ethernet4' -ServerAddresses ({aws_info.network4_gateway_ipv6}, '')"
+                    "regsvr32 /u 'C:\\Program Files\\Duo Security\\WindowsLogon\\DuoCredProv.dll'",
+                    "regsvr32 /u 'C:\\Program Files\\Duo Security\\WindowsLogon\\DuoCredFilter.dll'",
+                ],
             )
         case 5:
             print("Switching to network test 5.")
             switch_routing_table(
                 session=session,
-                routing_table_id=instance_ids.private_rt,
-                network_interface=instance_ids.network5_gateway_interface,
+                routing_table_id=aws_info.private_rt,
+                network_interface=aws_info.network5_gateway_interface,
+            )
+            run_ssh_commands_on_ec2(
+                jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
+                jumpServerUsername="onprem-jenkins",
+                host=aws_info.linux_test_instance_ipv6,
+                username="admin",
+                commands=[
+                    "sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0",
+                    "sudo sysctl -w net.ipv4.conf.all.disable_ipv4=1",
+                    f"echo 'nameserver {aws_info.network5_gateway_ipv6}' | sudo tee /etc/resolv.conf > /dev/null",
+                ],
+            )
+            run_ssh_commands_on_ec2(
+                jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
+                jumpServerUsername="onprem-jenkins",
+                host=aws_info.windows_test_instance_ipv6,
+                username="onprem-jenkins",
+                commands=[
+                    "powershell -Command Disable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip",
+                    "powershell -Command Enable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip6",
+                    f"powershell -Command Set-DnsClientServerAddress -InterfaceAlias 'Ethernet4' -ServerAddresses ({aws_info.network5_gateway_ipv6}, '')"
+                    "regsvr32 /u 'C:\\Program Files\\Duo Security\\WindowsLogon\\DuoCredProv.dll'",
+                    "regsvr32 /u 'C:\\Program Files\\Duo Security\\WindowsLogon\\DuoCredFilter.dll'",
+                ],
             )
         case _:
             raise ValueError("Unknown network test number.")

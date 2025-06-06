@@ -112,3 +112,8 @@ output "n4_gateway_ipv4" {
   description = "IPv4 address of the Network 5 server"
   value       = aws_instance.n4_gateway.public_ip
 }
+
+output "n4_gateway_network_interface_id" {
+  description = "Network interface id of n4 gateway"
+  value       = aws_instance.n4_gateway.primary_network_interface_id
+}
