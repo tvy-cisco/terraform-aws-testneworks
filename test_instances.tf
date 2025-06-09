@@ -104,7 +104,6 @@ resource "aws_instance" "linux_test_instance" {
 resource "aws_instance" "windows_test_instance_network5" {
   ami                    = "ami-0c481fef9aec55a67" # Darren's Base Windows AMI
   instance_type          = "m5.large"
-  key_name               = "thomas_laptop"
   subnet_id              = aws_subnet.private_subnet_5.id
   vpc_security_group_ids = [aws_security_group.test_instance.id]
 
@@ -131,3 +130,4 @@ output "private_rt" {
   description = "private routing table id"
   value       = aws_route_table.private.id
 }
+

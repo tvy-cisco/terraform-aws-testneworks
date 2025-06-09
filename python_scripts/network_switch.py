@@ -43,8 +43,7 @@ def run_ssh_commands_on_ec2(
             client.connect(hostname=host, username=username, sock=channel)
 
             for command in commands:
-                _, stdout, _ = client.exec_command(command)
-                print(stdout.read().decode())
+                _, _, _ = client.exec_command(command)
 
 
 def run_command_on_windows_instance(session, instance_id: str, command: str) -> None:
@@ -130,7 +129,7 @@ def main():
 
     match args.network_test_number:
         case 4:
-            print("Switching to network test 4.")
+            print(f"Switching to network test 4. {aws_info.network4_gateway_ipv6}")
             switch_routing_table(
                 session=session,
                 routing_table_id=aws_info.private_rt,
@@ -147,6 +146,9 @@ def main():
                     f"echo 'nameserver {aws_info.network4_gateway_ipv6}' | sudo tee /etc/resolv.conf > /dev/null",
                 ],
             )
+            print(
+                f"Switched Linux test machine to network 4 {aws_info.network4_gateway_ipv6}"
+            )
             run_ssh_commands_on_ec2(
                 jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
                 jumpServerUsername="onprem-jenkins",
@@ -155,13 +157,14 @@ def main():
                 commands=[
                     "powershell -Command Disable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip",
                     "powershell -Command Enable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip6",
-                    f"powershell -Command Set-DnsClientServerAddress -InterfaceAlias 'Ethernet4' -ServerAddresses ({aws_info.network4_gateway_ipv6}, '')"
-                    "regsvr32 /u 'C:\\Program Files\\Duo Security\\WindowsLogon\\DuoCredProv.dll'",
-                    "regsvr32 /u 'C:\\Program Files\\Duo Security\\WindowsLogon\\DuoCredFilter.dll'",
+                    f"powershell -Command Set-DnsClientServerAddress -InterfaceAlias 'Ethernet4' -ServerAddresses ('{aws_info.network4_gateway_ipv6}', '')",
                 ],
             )
+            print(
+                f"Switched Windows test machine to network 4 {aws_info.network4_gateway_ipv6}"
+            )
         case 5:
-            print("Switching to network test 5.")
+            print(f"Switching to network test 5 {aws_info.network5_gateway_ipv6}")
             switch_routing_table(
                 session=session,
                 routing_table_id=aws_info.private_rt,
@@ -178,6 +181,9 @@ def main():
                     f"echo 'nameserver {aws_info.network5_gateway_ipv6}' | sudo tee /etc/resolv.conf > /dev/null",
                 ],
             )
+            print(
+                f"Switched Linux test machine to network 5 {aws_info.network5_gateway_ipv6}"
+            )
             run_ssh_commands_on_ec2(
                 jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
                 jumpServerUsername="onprem-jenkins",
@@ -186,10 +192,11 @@ def main():
                 commands=[
                     "powershell -Command Disable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip",
                     "powershell -Command Enable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip6",
-                    f"powershell -Command Set-DnsClientServerAddress -InterfaceAlias 'Ethernet4' -ServerAddresses ({aws_info.network5_gateway_ipv6}, '')"
-                    "regsvr32 /u 'C:\\Program Files\\Duo Security\\WindowsLogon\\DuoCredProv.dll'",
-                    "regsvr32 /u 'C:\\Program Files\\Duo Security\\WindowsLogon\\DuoCredFilter.dll'",
+                    f"powershell -Command Set-DnsClientServerAddress -InterfaceAlias 'Ethernet4' -ServerAddresses ('{aws_info.network5_gateway_ipv6}', '')",
                 ],
+            )
+            print(
+                f"Switched Windows test machine to network 5 {aws_info.network5_gateway_ipv6}"
             )
         case _:
             raise ValueError("Unknown network test number.")
