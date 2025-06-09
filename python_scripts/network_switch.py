@@ -114,8 +114,7 @@ def main():
         description="Switch network routes for an EC2 instance."
     )
     parser.add_argument(
-        "--network_test_number",
-        required=True,
+        "network_test_number",
         type=int,
         help="Test network to switch to (1-7).",
     )
@@ -199,7 +198,7 @@ def main():
                 f"Switched Windows test machine to network 5 {aws_info.network5_gateway_ipv6}"
             )
         case _:
-            raise ValueError("Unknown network test number.")
+            raise ValueError("That test network is not implemented yet.")
 
 
 if __name__ == "__main__":
