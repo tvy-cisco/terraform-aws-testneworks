@@ -26,7 +26,7 @@ resource "aws_vpc" "test_network_vpc" {
 }
 
 resource "aws_internet_gateway" "test_network_igw" {
-  vpc_id = aws_vpc.terraform_vpc.id
+  vpc_id = aws_vpc.test_network_vpc.id
 
   tags = {
     Name               = "Network Test IGW"

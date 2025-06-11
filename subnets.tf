@@ -3,9 +3,9 @@
 ###################
 
 resource "aws_subnet" "public_subnet" {
-  vpc_id                          = aws_vpc.terraform_vpc.id
+  vpc_id                          = aws_vpc.test_network_vpc.id
   cidr_block                      = "10.0.1.0/24"
-  ipv6_cidr_block                 = cidrsubnet(aws_vpc.terraform_vpc.ipv6_cidr_block, 8, 0)
+  ipv6_cidr_block                 = cidrsubnet(aws_vpc.test_network_vpc.ipv6_cidr_block, 8, 0)
   assign_ipv6_address_on_creation = true
   map_public_ip_on_launch         = true
   availability_zone               = "us-west-2a"
@@ -29,8 +29,8 @@ resource "aws_subnet" "public_subnet" {
 }
 
 resource "aws_subnet" "private_subnet" {
-  vpc_id                                         = aws_vpc.terraform_vpc.id
-  ipv6_cidr_block                                = cidrsubnet(aws_vpc.terraform_vpc.ipv6_cidr_block, 8, 1)
+  vpc_id                                         = aws_vpc.test_network_vpc.id
+  ipv6_cidr_block                                = cidrsubnet(aws_vpc.test_network_vpc.ipv6_cidr_block, 8, 1)
   assign_ipv6_address_on_creation                = true
   ipv6_native                                    = true
   enable_resource_name_dns_aaaa_record_on_launch = true

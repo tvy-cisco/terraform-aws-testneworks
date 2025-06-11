@@ -1,7 +1,7 @@
 resource "aws_instance" "linux_test_instance" {
   ami                    = "ami-03e383d33727f4804"
   instance_type          = "t3.small"
-  subnet_id              = aws_subnet.private_subnet_5.id
+  subnet_id              = aws_subnet.private_subnet.id
   ipv6_address_count     = 1
   vpc_security_group_ids = [aws_security_group.test_instance.id]
 

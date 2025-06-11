@@ -1,7 +1,7 @@
 
 resource "aws_security_group" "jumpbox_sg" {
   name   = "jumpbox_sg"
-  vpc_id = aws_vpc.terraform_vpc.id
+  vpc_id = aws_vpc.test_network_vpc.id
 
   # All outbound traffic
   egress {
@@ -77,7 +77,7 @@ resource "aws_instance" "jumpbox" {
   instance_type          = "t3.small"
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.jumpbox_sg.id]
-  key_name               = aws_key_pair.manager.key_name
+  user_data              = file("${path.module}/scripts/deploy_ssh_keys.sh")
 
   tags = {
     Name               = "Jumpbox Instance"
@@ -99,5 +99,5 @@ resource "aws_instance" "jumpbox" {
 
 output "jumpbox_ip" {
   description = "jumpbox output ipv4"
-  value       = aws_instance.windows_jumpbox.public_ip
+  value       = aws_instance.jumpbox.public_ip
 }

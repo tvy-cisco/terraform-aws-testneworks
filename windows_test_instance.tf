@@ -1,14 +1,9 @@
 resource "aws_instance" "windows_test_instance" {
   ami                    = "ami-0c481fef9aec55a67" # Darren's Base Windows AMI
   instance_type          = "m5.large"
-  subnet_id              = aws_subnet.private_subnet_5.id
+  subnet_id              = aws_subnet.private_subnet.id
   vpc_security_group_ids = [aws_security_group.test_instance.id]
 
-  user_data = templatefile("${path.module}/scripts/windows_test_instance_setup.ps1.tpl",
-    {
-      dns64_server_ipv6  = aws_instance.n5_gateway.ipv6_addresses[0],
-      deploy_keys_script = file("${path.module}/scripts/deploy_ssh_keys.ps1")
-  })
   tags = {
     Name               = "Windows Test Instance"
     ProductFamilyName  = "DNS SEC"

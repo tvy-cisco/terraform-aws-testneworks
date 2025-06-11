@@ -4,7 +4,7 @@
 
 resource "aws_security_group" "n5_gateway" {
   name   = "terraform-Network5-gateway-sg"
-  vpc_id = aws_vpc.terraform_vpc.id
+  vpc_id = aws_vpc.test_network_vpc.id
 
   # SSH access from specific IPs
   ingress {
@@ -24,7 +24,7 @@ resource "aws_security_group" "n5_gateway" {
     from_port        = 53
     to_port          = 53
     protocol         = "udp"
-    ipv6_cidr_blocks = [aws_vpc.terraform_vpc.ipv6_cidr_block]
+    ipv6_cidr_blocks = [aws_vpc.test_network_vpc.ipv6_cidr_block]
     description      = "DNS queries"
   }
 
@@ -33,7 +33,7 @@ resource "aws_security_group" "n5_gateway" {
     from_port        = 53
     to_port          = 53
     protocol         = "tcp"
-    ipv6_cidr_blocks = [aws_vpc.terraform_vpc.ipv6_cidr_block]
+    ipv6_cidr_blocks = [aws_vpc.test_network_vpc.ipv6_cidr_block]
     description      = "DNS queries TCP from VPC"
   }
 
@@ -42,7 +42,7 @@ resource "aws_security_group" "n5_gateway" {
     from_port        = -1
     to_port          = -1
     protocol         = "58" # ICMPv6 protocol number
-    ipv6_cidr_blocks = [aws_vpc.terraform_vpc.ipv6_cidr_block]
+    ipv6_cidr_blocks = [aws_vpc.test_network_vpc.ipv6_cidr_block]
     description      = "ICMPv6 (ping6)"
   }
 
@@ -60,7 +60,7 @@ resource "aws_security_group" "n5_gateway" {
     from_port        = 0
     to_port          = 0
     protocol         = "-1"
-    ipv6_cidr_blocks = [aws_vpc.terraform_vpc.ipv6_cidr_block]
+    ipv6_cidr_blocks = [aws_vpc.test_network_vpc.ipv6_cidr_block]
     description      = "All IPv6 traffic from VPC"
   }
 

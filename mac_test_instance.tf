@@ -1,7 +1,7 @@
 resource "aws_instance" "mac_test_instance" {
-  ami                    = "ami-0e32721385a3683c5" # macOS AMI
+  ami                    = "ami-025de550ad6562d00" # macOS AMI
   instance_type          = "mac1.metal"
-  subnet_id              = aws_subnet.private_subnet_5.id
+  subnet_id              = aws_subnet.private_subnet.id
   ipv6_address_count     = 1
   vpc_security_group_ids = [aws_security_group.test_instance.id]
   host_id                = "h-0f239ecaa8944a750"
