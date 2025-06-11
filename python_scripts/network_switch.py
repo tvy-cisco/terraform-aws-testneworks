@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 from typing import List, NamedTuple
 
 import boto3
@@ -90,13 +91,22 @@ class AwsInfo(NamedTuple):
     linux_test_instance_ipv6: str
     windows_test_instance_ipv6: str
     jumpbox_instance_ipv4: str
+    mac_test_instance_ipv6: str
 
 
 def get_aws_info() -> AwsInfo:
-    with open("../terraform.tfstate", "r") as f:
-        tfstate = json.load(f)
-    outputs = tfstate.get("outputs", [])
+    if os.path.exists("./terraform.tfstate"):  # Check current directory first
+        with open("./terraform.tfstate", "r") as f:
+            tfstate = json.load(f)
+    elif os.path.exists(
+        "../terraform.tfstate"
+    ):  # Check parent directory if not found in current
+        with open("./terraform.tfstate", "r") as f:
+            tfstate = json.load(f)
+    else:
+        raise FileNotFoundError("Terraform state file not found.")
 
+    outputs = tfstate.get("outputs", [])
     return AwsInfo(
         private_rt=outputs["private_rt"]["value"],
         network5_gateway_interface=outputs["n5_gateway_network_interface_id"]["value"],
@@ -105,6 +115,7 @@ def get_aws_info() -> AwsInfo:
         network4_gateway_ipv6=outputs["n4_gateway_ipv6"]["value"],
         linux_test_instance_ipv6=outputs["linux_test_ip"]["value"],
         windows_test_instance_ipv6=outputs["windows_test_ip"]["value"],
+        mac_test_instance_ipv6=outputs["mac_test_ip"]["value"],
         jumpbox_instance_ipv4=outputs["jumpbox_ip"]["value"],
     )
 

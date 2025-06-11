@@ -75,7 +75,20 @@ resource "aws_security_group" "n5_gateway" {
   }
 
   tags = {
-    Name = "terraform-Network5-dns64-nat64-sg"
+    Name               = "Network 5 Gateway Security Group"
+    ProductFamilyName  = "DNS SEC"
+    ApplicationName    = "OPI"
+    Environment        = "Non-Prod"
+    CiscoMailAlias     = "umbrell-opi-cicd@cisco.com"
+    DataClassification = "Cisco Highly Confidential"
+    DataTaxonomy       = "Cisco Strategic Data"
+    ResourceOwner      = "Umbrella"
+    TeamName           = "ERC"
+    TechnicalContact   = "aturino@cisco.com"
+    SecurityContact    = "aturino@cisco.com"
+    IntendedPublic     = "False"
+    LastRevalidatedBy  = "darhunt@cisco.com"
+    LastRevalidatedAt  = formatdate("YYYY MMM DD", timestamp())
   }
 }
 
@@ -98,7 +111,20 @@ resource "aws_instance" "n5_gateway" {
   })
 
   tags = {
-    Name = "terraform-Network5-dns64-nat64"
+    Name               = "Network 5 Gateway"
+    ProductFamilyName  = "DNS SEC"
+    ApplicationName    = "OPI"
+    Environment        = "Non-Prod"
+    CiscoMailAlias     = "umbrell-opi-cicd@cisco.com"
+    DataClassification = "Cisco Highly Confidential"
+    DataTaxonomy       = "Cisco Strategic Data"
+    ResourceOwner      = "Umbrella"
+    TeamName           = "ERC"
+    TechnicalContact   = "aturino@cisco.com"
+    SecurityContact    = "aturino@cisco.com"
+    IntendedPublic     = "False"
+    LastRevalidatedBy  = "darhunt@cisco.com"
+    LastRevalidatedAt  = formatdate("YYYY MMM DD", timestamp())
   }
 }
 
@@ -117,3 +143,4 @@ output "n5_gateway_network_interface_id" {
   description = "Network interface id of n5 gateway"
   value       = aws_instance.n5_gateway.primary_network_interface_id
 }
+

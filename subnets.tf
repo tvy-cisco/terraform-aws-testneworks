@@ -1,14 +1,17 @@
 ###################
-# VPC Resources
+# Subnet Resources
 ###################
 
-resource "aws_vpc" "test_network_vpc" {
-  cidr_block                       = "10.0.0.0/16"
-  assign_generated_ipv6_cidr_block = true
-
+resource "aws_subnet" "public_subnet" {
+  vpc_id                          = aws_vpc.terraform_vpc.id
+  cidr_block                      = "10.0.1.0/24"
+  ipv6_cidr_block                 = cidrsubnet(aws_vpc.terraform_vpc.ipv6_cidr_block, 8, 0)
+  assign_ipv6_address_on_creation = true
+  map_public_ip_on_launch         = true
+  availability_zone               = "us-west-2a"
 
   tags = {
-    Name               = "Network Test VPC"
+    Name               = "Public Network Test Subnet"
     ProductFamilyName  = "DNS SEC"
     ApplicationName    = "OPI"
     Environment        = "Non-Prod"
@@ -25,11 +28,16 @@ resource "aws_vpc" "test_network_vpc" {
   }
 }
 
-resource "aws_internet_gateway" "test_network_igw" {
-  vpc_id = aws_vpc.terraform_vpc.id
+resource "aws_subnet" "private_subnet" {
+  vpc_id                                         = aws_vpc.terraform_vpc.id
+  ipv6_cidr_block                                = cidrsubnet(aws_vpc.terraform_vpc.ipv6_cidr_block, 8, 1)
+  assign_ipv6_address_on_creation                = true
+  ipv6_native                                    = true
+  enable_resource_name_dns_aaaa_record_on_launch = true
+  availability_zone                              = "us-west-2a"
 
   tags = {
-    Name               = "Network Test IGW"
+    Name               = "Private Network Test Subnet"
     ProductFamilyName  = "DNS SEC"
     ApplicationName    = "OPI"
     Environment        = "Non-Prod"
@@ -44,20 +52,5 @@ resource "aws_internet_gateway" "test_network_igw" {
     LastRevalidatedBy  = "darhunt@cisco.com"
     LastRevalidatedAt  = formatdate("YYYY MMM DD", timestamp())
   }
-}
-
-
-
-###################
-# Outputs
-###################
-
-output "ssh_proxy_command_example" {
-  description = "Example SSH ProxyCommand configuration for accessing the test instance via the NAT64 server."
-  value       = <<EOT
-To SSH into the test instance
-  Linux Test Instance via Windows Jumpbox, use the following command:
-ssh -o ProxyCommand="ssh -W [%h]:%p admin@${aws_instance.jumpbox.public_ip}" admin@${aws_instance.linux_test_instance.ipv6_addresses[0]}
-EOT
 }
 

@@ -55,20 +55,45 @@ resource "aws_security_group" "jumpbox_sg" {
   }
 
   tags = {
-    Name = "terraform-Network5-test-sg"
+    Name               = "Jumpbox Security Group"
+    ProductFamilyName  = "DNS SEC"
+    ApplicationName    = "OPI"
+    Environment        = "Non-Prod"
+    CiscoMailAlias     = "umbrell-opi-cicd@cisco.com"
+    DataClassification = "Cisco Highly Confidential"
+    DataTaxonomy       = "Cisco Strategic Data"
+    ResourceOwner      = "Umbrella"
+    TeamName           = "ERC"
+    TechnicalContact   = "aturino@cisco.com"
+    SecurityContact    = "aturino@cisco.com"
+    IntendedPublic     = "False"
+    LastRevalidatedBy  = "darhunt@cisco.com"
+    LastRevalidatedAt  = formatdate("YYYY MMM DD", timestamp())
   }
 }
 
-resource "aws_instance" "windows_jumpbox" {
-  ami                    = "ami-0c481fef9aec55a67" # Darren's Base Windows AMI
-  instance_type          = "m5.large"
+resource "aws_instance" "jumpbox" {
+  ami                    = "ami-03e383d33727f4804" #AWS Debian image
+  instance_type          = "t3.small"
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.jumpbox_sg.id]
-
-  user_data = file("${path.module}/scripts/deploy_ssh_keys.ps1")
+  key_name               = aws_key_pair.manager.key_name
 
   tags = {
-    Name = "WindowsJumpboxInstance"
+    Name               = "Jumpbox Instance"
+    ProductFamilyName  = "DNS SEC"
+    ApplicationName    = "OPI"
+    Environment        = "Non-Prod"
+    CiscoMailAlias     = "umbrell-opi-cicd@cisco.com"
+    DataClassification = "Cisco Highly Confidential"
+    DataTaxonomy       = "Cisco Strategic Data"
+    ResourceOwner      = "Umbrella"
+    TeamName           = "ERC"
+    TechnicalContact   = "aturino@cisco.com"
+    SecurityContact    = "aturino@cisco.com"
+    IntendedPublic     = "False"
+    LastRevalidatedBy  = "darhunt@cisco.com"
+    LastRevalidatedAt  = formatdate("YYYY MMM DD", timestamp())
   }
 }
 

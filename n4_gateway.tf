@@ -75,7 +75,20 @@ resource "aws_security_group" "n4_gateway" {
   }
 
   tags = {
-    Name = "terraform-Network4-dns64-nat64-sg"
+    Name               = "Network 4 Gateway Security Group"
+    ProductFamilyName  = "DNS SEC"
+    ApplicationName    = "OPI"
+    Environment        = "Non-Prod"
+    CiscoMailAlias     = "umbrell-opi-cicd@cisco.com"
+    DataClassification = "Cisco Highly Confidential"
+    DataTaxonomy       = "Cisco Strategic Data"
+    ResourceOwner      = "Umbrella"
+    TeamName           = "ERC"
+    TechnicalContact   = "aturino@cisco.com"
+    SecurityContact    = "aturino@cisco.com"
+    IntendedPublic     = "False"
+    LastRevalidatedBy  = "darhunt@cisco.com"
+    LastRevalidatedAt  = formatdate("YYYY MMM DD", timestamp())
   }
 }
 
@@ -86,19 +99,33 @@ resource "aws_security_group" "n4_gateway" {
 ###################
 
 resource "aws_instance" "n4_gateway" {
-  ami                    = "ami-03e383d33727f4804"
-  instance_type          = "t3.small"
-  subnet_id              = aws_subnet.public_subnet.id
-  ipv6_address_count     = 1
-  source_dest_check      = false # Required for NAT functionality
-  vpc_security_group_ids = [aws_security_group.n4_gateway.id]
+  ami                         = "ami-03e383d33727f4804"
+  instance_type               = "t3.small"
+  subnet_id                   = aws_subnet.public_subnet.id
+  ipv6_address_count          = 1
+  source_dest_check           = false # Required for NAT functionality
+  vpc_security_group_ids      = [aws_security_group.n4_gateway.id]
   user_data_replace_on_change = false
   user_data = templatefile("${path.module}/scripts/n4_gateway_setup.sh.tpl", {
     deploy_ssh_keys_script = file("${path.module}/scripts/deploy_ssh_keys.sh")
   })
 
   tags = {
-    Name = "terraform-Network4-dns64-nat64"
+    Name               = "Network 4 Gateway"
+    ProductFamilyName  = "DNS SEC"
+    ApplicationName    = "OPI"
+    Environment        = "Non-Prod"
+    CiscoMailAlias     = "umbrell-opi-cicd@cisco.com"
+    DataClassification = "Cisco Highly Confidential"
+    DataTaxonomy       = "Cisco Strategic Data"
+    ResourceOwner      = "Umbrella"
+    TeamName           = "ERC"
+    TechnicalContact   = "aturino@cisco.com"
+    SecurityContact    = "aturino@cisco.com"
+    IntendedPublic     = "False"
+    LastRevalidatedBy  = "darhunt@cisco.com"
+    LastRevalidatedAt  = formatdate("YYYY MMM DD", timestamp())
+
   }
 }
 
@@ -117,3 +144,4 @@ output "n4_gateway_network_interface_id" {
   description = "Network interface id of n4 gateway"
   value       = aws_instance.n4_gateway.primary_network_interface_id
 }
+
