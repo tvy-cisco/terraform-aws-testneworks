@@ -1,5 +1,5 @@
 resource "aws_security_group" "test_instance" {
-  name   = "terraform-Network5-test"
+  name   = "test-instance-sg"
   vpc_id = aws_vpc.test_network_vpc.id
 
   # All outbound traffic

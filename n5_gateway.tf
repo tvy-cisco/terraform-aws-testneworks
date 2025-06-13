@@ -3,7 +3,7 @@
 ###################
 
 resource "aws_security_group" "n5_gateway" {
-  name   = "terraform-Network5-gateway-sg"
+  name   = "n5-gateway-sg"
   vpc_id = aws_vpc.test_network_vpc.id
 
   # SSH access from specific IPs

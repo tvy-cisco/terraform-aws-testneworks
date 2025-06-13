@@ -28,3 +28,5 @@ terraform.rc
 
 # Ignore plan output files
 *.tfplan
+
+**/__pycache__

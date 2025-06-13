@@ -1,14 +1,17 @@
 resource "aws_instance" "mac_test_instance" {
-  ami                    = "ami-025de550ad6562d00" # macOS AMI
-  instance_type          = "mac1.metal"
-  subnet_id              = aws_subnet.private_subnet.id
-  ipv6_address_count     = 1
-  vpc_security_group_ids = [aws_security_group.test_instance.id]
+  ami           = "ami-0e32721385a3683c5" # macOS AMI
+  instance_type = "mac1.metal"
+  # subnet_id              = aws_subnet.private_subnet.id
+  # ipv6_address_count     = 1
+  # vpc_security_group_ids = [aws_security_group.test_instance.id]
+  subnet_id              = aws_subnet.public_subnet.id
+  vpc_security_group_ids = [aws_security_group.jumpbox_sg.id]
   host_id                = "h-0f239ecaa8944a750"
   key_name               = aws_key_pair.manager.key_name
+  user_data              = file("${path.module}/scripts/mac_deploy_ssh_keys.sh")
 
   tags = {
-    Name               = "Mac Test Instance Network5"
+    Name               = "Mac Test Instance"
     ProductFamilyName  = "DNS SEC"
     ApplicationName    = "OPI"
     Environment        = "Non-Prod"

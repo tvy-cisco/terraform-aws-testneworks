@@ -1,12 +1,15 @@
 import argparse
 import json
 import os
+import threading
 from typing import List, NamedTuple
 
 import boto3
 import paramiko
-from paramiko.proxy import ProxyCommand
+from logger_config import logger
+from ssh_tunnel import SSHTunnel
 
+ssh_tunnels = []
 
 # def run_ssm_command(session, instance_id: str, command: str) -> None:
 #     ssm = session.client("ssm", region_name="us-west-2")
@@ -22,8 +25,25 @@ from paramiko.proxy import ProxyCommand
 #     # To get the output
 #     output = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
 #
-#     print(output["StandardOutputContent"])
+#     logger.info(output["StandardOutputContent"])
 #
+# def run_command_on_windows_instance(session, instance_id: str, command: str) -> None:
+#     ssm = session.client("ssm", region_name="us-west-2")
+#
+#     response = ssm.send_command(
+#         InstanceIds=[instance_id],
+#         DocumentName="AWS-RunPowershellScript",
+#         Parameters={"commands": [command]},
+#     )
+#
+#     command_id = response["Command"]["CommandId"]
+#
+#     # To get the output
+#     output = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
+#
+#     logger.info(output["StandardOutputContent"])
+
+
 def run_ssh_commands_on_ec2(
     jumpServerIpv4: str,
     jumpServerUsername: str,
@@ -47,23 +67,6 @@ def run_ssh_commands_on_ec2(
                 _, _, _ = client.exec_command(command)
 
 
-def run_command_on_windows_instance(session, instance_id: str, command: str) -> None:
-    ssm = session.client("ssm", region_name="us-west-2")
-
-    response = ssm.send_command(
-        InstanceIds=[instance_id],
-        DocumentName="AWS-RunPowershellScript",
-        Parameters={"commands": [command]},
-    )
-
-    command_id = response["Command"]["CommandId"]
-
-    # To get the output
-    output = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
-
-    print(output["StandardOutputContent"])
-
-
 # switches routing table for a network interface
 # ipv6 only for now
 def switch_routing_table(
@@ -79,7 +82,9 @@ def switch_routing_table(
     if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
         raise Exception("Failed to replace route in routing table.")
 
-    print(f"Switched private routing table to {network_interface} for IPv6 traffic.")
+    logger.info(
+        f"Switched private routing table to {network_interface} for IPv6 traffic."
+    )
 
 
 class AwsInfo(NamedTuple):
@@ -95,13 +100,10 @@ class AwsInfo(NamedTuple):
 
 
 def get_aws_info() -> AwsInfo:
-    if os.path.exists("./terraform.tfstate"):  # Check current directory first
-        with open("./terraform.tfstate", "r") as f:
-            tfstate = json.load(f)
-    elif os.path.exists(
+    if os.path.exists(
         "../terraform.tfstate"
     ):  # Check parent directory if not found in current
-        with open("./terraform.tfstate", "r") as f:
+        with open("../terraform.tfstate", "r") as f:
             tfstate = json.load(f)
     else:
         raise FileNotFoundError("Terraform state file not found.")
@@ -118,6 +120,37 @@ def get_aws_info() -> AwsInfo:
         mac_test_instance_ipv6=outputs["mac_test_ip"]["value"],
         jumpbox_instance_ipv4=outputs["jumpbox_ip"]["value"],
     )
+
+
+def run_rdp_ssh_tunnel(
+    jump_host: str,
+    jump_username: str,
+    windows_test_instance_ipv6: str,
+    local_port: int,
+) -> None:
+
+    rdp_tunnel = SSHTunnel(
+        jump_host, 22, jump_username, local_port, windows_test_instance_ipv6, 3389
+    )
+    rdp_tunnel.start()
+    logger.info(f"RDP SSH tunnel started on localhost:{local_port}")
+
+    global ssh_tunnels
+    ssh_tunnels.append(rdp_tunnel)
+
+
+def wait_until_user_quits() -> None:
+    try:
+        logger.info("Press Ctrl+C or enter 'quit' to stop SSH tunnels...")
+        while True:  # Keep the main thread alive to allow SSH tunnels to run
+            userInput = input()  # Wait for user input to quit
+            if userInput.lower() == "quit":
+                raise KeyboardInterrupt
+    except KeyboardInterrupt:
+        logger.info("Quit received - Stopping SSH tunnels...")
+        for tunnel in ssh_tunnels:
+            tunnel.stop()
+        logger.info("Goodbye!")
 
 
 def main():
@@ -139,75 +172,93 @@ def main():
 
     match args.network_test_number:
         case 4:
-            print(f"Switching to network test 4. {aws_info.network4_gateway_ipv6}")
+            logger.info(
+                f"Switching to network test 4. {aws_info.network4_gateway_ipv6}"
+            )
             switch_routing_table(
                 session=session,
                 routing_table_id=aws_info.private_rt,
                 network_interface=aws_info.network4_gateway_interface,
             )
-            run_ssh_commands_on_ec2(
-                jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
-                jumpServerUsername="onprem-jenkins",
-                host=aws_info.linux_test_instance_ipv6,
-                username="admin",
-                commands=[
-                    "sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0",
-                    "sudo sysctl -w net.ipv4.conf.all.disable_ipv4=1",
-                    f"echo 'nameserver {aws_info.network4_gateway_ipv6}' | sudo tee /etc/resolv.conf > /dev/null",
-                ],
+            # run_ssh_commands_on_ec2(
+            #     jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
+            #     jumpServerUsername="onprem-jenkins",
+            #     host=aws_info.linux_test_instance_ipv6,
+            #     username="admin",
+            #     commands=[
+            #         "sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0",
+            #         "sudo sysctl -w net.ipv4.conf.all.disable_ipv4=1",
+            #         f"echo 'nameserver {aws_info.network4_gateway_ipv6}' | sudo tee /etc/resolv.conf > /dev/null",
+            #     ],
+            # )
+            # logger.info(
+            #     f"Switched Linux test machine to network 4 {aws_info.network4_gateway_ipv6}"
+            # )
+            # run_ssh_commands_on_ec2(
+            #     jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
+            #     jumpServerUsername="onprem-jenkins",
+            #     host=aws_info.windows_test_instance_ipv6,
+            #     username="onprem-jenkins",
+            #     commands=[
+            #         "powershell -Command Disable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip",
+            #         "powershell -Command Enable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip6",
+            #         f"powershell -Command Set-DnsClientServerAddress -InterfaceAlias 'Ethernet4' -ServerAddresses ('{aws_info.network4_gateway_ipv6}', '')",
+            #     ],
+            # )
+            # logger.info(
+            #     f"Switched Windows test machine to network 4 {aws_info.network4_gateway_ipv6}"
+            # )
+            run_rdp_ssh_tunnel(
+                jump_host=aws_info.jumpbox_instance_ipv4,
+                jump_username="admin",
+                windows_test_instance_ipv6=aws_info.windows_test_instance_ipv6,
+                local_port=7077,  # Default RDP port
             )
-            print(
-                f"Switched Linux test machine to network 4 {aws_info.network4_gateway_ipv6}"
-            )
-            run_ssh_commands_on_ec2(
-                jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
-                jumpServerUsername="onprem-jenkins",
-                host=aws_info.windows_test_instance_ipv6,
-                username="onprem-jenkins",
-                commands=[
-                    "powershell -Command Disable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip",
-                    "powershell -Command Enable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip6",
-                    f"powershell -Command Set-DnsClientServerAddress -InterfaceAlias 'Ethernet4' -ServerAddresses ('{aws_info.network4_gateway_ipv6}', '')",
-                ],
-            )
-            print(
-                f"Switched Windows test machine to network 4 {aws_info.network4_gateway_ipv6}"
-            )
+            wait_until_user_quits()
+
         case 5:
-            print(f"Switching to network test 5 {aws_info.network5_gateway_ipv6}")
+            logger.info(f"Switching to network test 5 {aws_info.network5_gateway_ipv6}")
             switch_routing_table(
                 session=session,
                 routing_table_id=aws_info.private_rt,
                 network_interface=aws_info.network5_gateway_interface,
             )
-            run_ssh_commands_on_ec2(
-                jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
-                jumpServerUsername="onprem-jenkins",
-                host=aws_info.linux_test_instance_ipv6,
-                username="admin",
-                commands=[
-                    "sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0",
-                    "sudo sysctl -w net.ipv4.conf.all.disable_ipv4=1",
-                    f"echo 'nameserver {aws_info.network5_gateway_ipv6}' | sudo tee /etc/resolv.conf > /dev/null",
-                ],
+            # run_ssh_commands_on_ec2(
+            #     jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
+            #     jumpServerUsername="admin",
+            #     host=aws_info.linux_test_instance_ipv6,
+            #     username="admin",
+            #     commands=[
+            #         "sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0",
+            #         "sudo sysctl -w net.ipv4.conf.all.disable_ipv4=1",
+            #         f"echo 'nameserver {aws_info.network5_gateway_ipv6}' | sudo tee /etc/resolv.conf > /dev/null",
+            #     ],
+            # )
+            # logger.info(
+            #     f"Switched Linux test machine to network 5 {aws_info.network5_gateway_ipv6}"
+            # )
+            # run_ssh_commands_on_ec2(
+            #     jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
+            #     jumpServerUsername="admin",
+            #     host=aws_info.windows_test_instance_ipv6,
+            #     username="onprem-jenkins",
+            #     commands=[
+            #         "powershell -Command Disable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip",
+            #         "powershell -Command Enable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip6",
+            #         f"powershell -Command Set-DnsClientServerAddress -InterfaceAlias 'Ethernet4' -ServerAddresses ('{aws_info.network5_gateway_ipv6}', '')",
+            #     ],
+            # )
+            # logger.info(
+            #     f"Switched Windows test machine to network 5 {aws_info.network5_gateway_ipv6}"
+            # )
+            run_rdp_ssh_tunnel(
+                jump_host=aws_info.jumpbox_instance_ipv4,
+                jump_username="admin",
+                windows_test_instance_ipv6=aws_info.windows_test_instance_ipv6,
+                local_port=7077,  # Default RDP port
             )
-            print(
-                f"Switched Linux test machine to network 5 {aws_info.network5_gateway_ipv6}"
-            )
-            run_ssh_commands_on_ec2(
-                jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
-                jumpServerUsername="onprem-jenkins",
-                host=aws_info.windows_test_instance_ipv6,
-                username="onprem-jenkins",
-                commands=[
-                    "powershell -Command Disable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip",
-                    "powershell -Command Enable-NetAdapterBinding -Name 'Ethernet4' -ComponentID ms_tcpip6",
-                    f"powershell -Command Set-DnsClientServerAddress -InterfaceAlias 'Ethernet4' -ServerAddresses ('{aws_info.network5_gateway_ipv6}', '')",
-                ],
-            )
-            print(
-                f"Switched Windows test machine to network 5 {aws_info.network5_gateway_ipv6}"
-            )
+            wait_until_user_quits()
+
         case _:
             raise ValueError("That test network is not implemented yet.")
 
