@@ -4,10 +4,7 @@ resource "aws_instance" "mac_test_instance" {
   subnet_id              = aws_subnet.private_subnet.id
   ipv6_address_count     = 1
   vpc_security_group_ids = [aws_security_group.test_instance.id]
-  # subnet_id              = aws_subnet.public_subnet.id
-  # vpc_security_group_ids = [aws_security_group.jumpbox_sg.id]
-  host_id  = "h-0f239ecaa8944a750"
-  key_name = aws_key_pair.manager.key_name
+  host_id                = "h-0f239ecaa8944a750"
 
   tags = {
     Name               = "Mac Test Instance"

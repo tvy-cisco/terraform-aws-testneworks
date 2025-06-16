@@ -1,11 +1,12 @@
 import argparse
 import json
 import os
-import threading
+import time
 from typing import List, NamedTuple
 
 import boto3
 import paramiko
+
 from logger_config import logger
 from ssh_tunnel import SSHTunnel
 
@@ -13,8 +14,8 @@ ssh_tunnels = []
 
 
 def run_ssh_commands_on_ec2(
-    jumpServerIpv4: str,
-    jumpServerUsername: str,
+    jump_server_ipv4: str,
+    jump_server_username: str,
     host: str,
     username: str,
     commands: List[str],
@@ -22,7 +23,7 @@ def run_ssh_commands_on_ec2(
     # Connect to jump host
     with paramiko.SSHClient() as jump_client:
         jump_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        jump_client.connect(jumpServerIpv4, username=jumpServerUsername)
+        jump_client.connect(jump_server_ipv4, username=jump_server_username)
 
         # Open channel from jump host to target
         transport = jump_client.get_transport()
@@ -69,9 +70,9 @@ class AwsInfo(NamedTuple):
 
 def get_aws_info() -> AwsInfo:
     if os.path.exists(
-        "../terraform.tfstate"
+        "./terraform.tfstate"
     ):  # Check parent directory if not found in current
-        with open("../terraform.tfstate", "r") as f:
+        with open("./terraform.tfstate", "r") as f:
             tfstate = json.load(f)
     else:
         raise FileNotFoundError("Terraform state file not found.")
@@ -93,21 +94,21 @@ def get_aws_info() -> AwsInfo:
 def run_vnc_tunnel(
     jump_host: str,
     jump_username: str,
-    mac_ip6_address: str,
+    mac_ipv6_address: str,
     local_port: int,
 ) -> None:
 
     vnc_tunnel = SSHTunnel(
-        jump_host, 22, jump_username, local_port, mac_ip6_address, 5900
+        jump_host, 22, jump_username, local_port, mac_ipv6_address, 5900
     )
     vnc_tunnel.start()
-    logger.info(f"VNC SSH tunnel started on localhost:{local_port}")
+    logger.info(f"VNC SSH tunnel started on localhost:{local_port} - user:ec2-user")
 
     global ssh_tunnels
     ssh_tunnels.append(vnc_tunnel)
 
 
-def run_rdp_ssh_tunnel(
+def run_rdp_tunnel(
     jump_host: str,
     jump_username: str,
     windows_test_instance_ipv6: str,
@@ -118,7 +119,9 @@ def run_rdp_ssh_tunnel(
         jump_host, 22, jump_username, local_port, windows_test_instance_ipv6, 3389
     )
     rdp_tunnel.start()
-    logger.info(f"RDP SSH tunnel started on localhost:{local_port}")
+    logger.info(
+        f"RDP SSH tunnel started on localhost:{local_port} - user:onprem-jenkins"
+    )
 
     global ssh_tunnels
     ssh_tunnels.append(rdp_tunnel)
@@ -166,8 +169,8 @@ def main():
                 network_interface=aws_info.network4_gateway_interface,
             )
             run_ssh_commands_on_ec2(
-                jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
-                jumpServerUsername="onprem-jenkins",
+                jump_server_ipv4=aws_info.jumpbox_instance_ipv4,
+                jump_server_username="admin",
                 host=aws_info.linux_test_instance_ipv6,
                 username="admin",
                 commands=[
@@ -180,8 +183,8 @@ def main():
                 f"Switched Linux test machine to network 4 {aws_info.network4_gateway_ipv6}"
             )
             run_ssh_commands_on_ec2(
-                jumpServerIpv4=aws_info.jumpbox_instance_ipv4,
-                jumpServerUsername="onprem-jenkins",
+                jump_server_ipv4=aws_info.jumpbox_instance_ipv4,
+                jump_server_username="onprem-jenkins",
                 host=aws_info.windows_test_instance_ipv6,
                 username="onprem-jenkins",
                 commands=[
@@ -193,6 +196,20 @@ def main():
             logger.info(
                 f"Switched Windows test machine to network 4 {aws_info.network4_gateway_ipv6}"
             )
+            run_ssh_commands_on_ec2(
+                jump_server_ipv4=aws_info.jumpbox_instance_ipv4,
+                jump_server_username="admin",
+                host=aws_info.mac_test_instance_ipv6,
+                username="ec2-user",
+                commands=[
+                    "sudo networksetup -setv4off 'Thunderbolt Ethernet Slot 2'"
+                    "sudo networksetup -setv6automatic 'Thunderbolt Ethernet Slot 2'",
+                    f"sudo networksetup -setdnsservers 'Thunderbolt Ethernet Slot 2' '{aws_info.network4_gateway_ipv6}'",
+                ],
+            )
+            logger.info(
+                f"Switched Mac test machine to network 5 {aws_info.network4_gateway_ipv6}"
+            )
         case 5:
             logger.info(f"Switching to network test 5 {aws_info.network5_gateway_ipv6}")
             switch_routing_table(
@@ -201,8 +218,8 @@ def main():
                 network_interface=aws_info.network5_gateway_interface,
             )
             run_ssh_commands_on_ec2(
-                jumpserveripv4=aws_info.jumpbox_instance_ipv4,
-                jumpserverusername="admin",
+                jump_server_ipv4=aws_info.jumpbox_instance_ipv4,
+                jump_server_username="admin",
                 host=aws_info.linux_test_instance_ipv6,
                 username="admin",
                 commands=[
@@ -215,8 +232,8 @@ def main():
                 f"switched linux test machine to network 5 {aws_info.network5_gateway_ipv6}"
             )
             run_ssh_commands_on_ec2(
-                jumpserveripv4=aws_info.jumpbox_instance_ipv4,
-                jumpserverusername="admin",
+                jump_server_ipv4=aws_info.jumpbox_instance_ipv4,
+                jump_server_username="admin",
                 host=aws_info.windows_test_instance_ipv6,
                 username="onprem-jenkins",
                 commands=[
@@ -228,23 +245,38 @@ def main():
             logger.info(
                 f"switched windows test machine to network 5 {aws_info.network5_gateway_ipv6}"
             )
+            run_ssh_commands_on_ec2(
+                jump_server_ipv4=aws_info.jumpbox_instance_ipv4,
+                jump_server_username="admin",
+                host=aws_info.mac_test_instance_ipv6,
+                username="ec2-user",
+                commands=[
+                    "sudo networksetup -setv4off 'Thunderbolt Ethernet Slot 2'"
+                    "sudo networksetup -setv6automatic 'Thunderbolt Ethernet Slot 2'",
+                    f"sudo networksetup -setdnsservers 'Thunderbolt Ethernet Slot 2' '{aws_info.network5_gateway_ipv6}'",
+                ],
+            )
+            logger.info(
+                f"Switched Mac test machine to network 5 {aws_info.network5_gateway_ipv6}"
+            )
 
         case _:
             raise ValueError("That test network is not implemented yet.")
 
-        run_rdp_ssh_tunnel(
-            jump_host=aws_info.jumpbox_instance_ipv4,
-            jump_username="admin",
-            windows_test_instance_ipv6=aws_info.windows_test_instance_ipv6,
-            local_port=7077,
-        )
-        run_vnc_tunnel(
-            jump_host=aws_info.jumpbox_instance_ipv4,
-            jump_username="admin",
-            mac_ipv6_address=aws_info.mac_test_instance_ipv6,
-            local_port=7066,
-        )
-        wait_until_user_quits()
+    run_rdp_tunnel(
+        jump_host=aws_info.jumpbox_instance_ipv4,
+        jump_username="admin",
+        windows_test_instance_ipv6=aws_info.windows_test_instance_ipv6,
+        local_port=7077,
+    )
+    run_vnc_tunnel(
+        jump_host=aws_info.jumpbox_instance_ipv4,
+        jump_username="admin",
+        mac_ipv6_address=aws_info.mac_test_instance_ipv6,
+        local_port=7066,
+    )
+    time.sleep(1)  # Give tunnels time to establish
+    wait_until_user_quits()
 
 
 if __name__ == "__main__":

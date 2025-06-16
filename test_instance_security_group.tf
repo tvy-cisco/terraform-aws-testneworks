@@ -38,6 +38,15 @@ resource "aws_security_group" "test_instance" {
     description     = "RDP access from jumpbox security group"
   }
 
+  #Allow RDP from jumpbox security group
+  ingress {
+    from_port       = 5900
+    to_port         = 5900
+    protocol        = "tcp"
+    security_groups = [aws_security_group.jumpbox_sg.id]
+    description     = "VNC access from jumpbox security group"
+  }
+
   tags = {
     Name               = "Test Instances Security Group"
     ProductFamilyName  = "DNS SEC"

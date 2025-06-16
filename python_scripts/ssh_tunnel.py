@@ -4,6 +4,7 @@ import threading
 import time
 
 import paramiko
+
 from logger_config import logger
 
 
@@ -44,12 +45,11 @@ class SSHTunnel:
         self.ssh_client = paramiko.SSHClient()
         self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-        logger.info(f"Connecting to Jump SSH server {self.jump_host}:{self.jump_port}")
+        logger.debug(f"Connecting to Jump SSH server {self.jump_host}:{self.jump_port}")
         self.ssh_client.connect(
             hostname=self.jump_host,
             port=self.jump_port,
             username=self.jump_username,
-            key_filename="C:/Users/tvy/.ssh/id_ed25519",
             timeout=10,
         )
 
@@ -60,16 +60,15 @@ class SSHTunnel:
         self.server_socket.listen(5)
 
         self.running = True
-        logger.info(f"SSH tunnel listening on localhost:{self.local_port}")
 
         # Accept connections
         while True:
             try:
                 client_socket, client_address = self.server_socket.accept()
                 if not self.running:
-                    logger.info("SSH tunnel stopped, no longer accepting connections")
+                    logger.debug("SSH tunnel stopped, no longer accepting connections")
                     break
-                logger.info(f"New connection from {client_address}")
+                logger.debug(f"New connection from {client_address}")
 
                 # Handle each client in a separate thread
                 thread = threading.Thread(
@@ -93,8 +92,6 @@ class SSHTunnel:
             ssh_channel = self.ssh_client.get_transport().open_channel(
                 "direct-tcpip", (self.remote_host, self.remote_port), client_address
             )
-
-            logger.info(f"Established SSH channel for {client_address}")
 
             # Start forwarding threads
             forward_threads = []
@@ -159,7 +156,7 @@ class SSHTunnel:
                     data = source.recv(4096)
 
                 if not data:
-                    logger.info(f"Connection closed in direction {direction}")
+                    logger.debug(f"Connection closed in direction {direction}")
                     break
 
                 # Send data
@@ -196,7 +193,7 @@ class SSHTunnel:
 
     def cleanup_connection(self, client_socket, ssh_channel, client_address):
         """Clean up connection resources"""
-        logger.info(f"Cleaning up connection for {client_address}")
+        logger.debug(f"Cleaning up connection for {client_address}")
 
         if client_socket:
             try:

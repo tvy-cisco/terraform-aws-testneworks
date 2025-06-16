@@ -4,7 +4,7 @@ resource "aws_instance" "linux_test_instance" {
   subnet_id              = aws_subnet.private_subnet.id
   ipv6_address_count     = 1
   vpc_security_group_ids = [aws_security_group.test_instance.id]
-  key_name               = aws_key_pair.manager.key_name
+  user_data              = file("${path.module}/scripts/deploy_ssh_keys.sh")
 
   tags = {
     Name               = "Linux Test Instance"
