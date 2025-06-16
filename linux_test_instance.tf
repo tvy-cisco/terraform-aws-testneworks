@@ -28,3 +28,11 @@ output "linux_test_ip" {
   description = "IPv6 address of the linux test instance"
   value       = aws_instance.linux_test_instance.ipv6_addresses[0]
 }
+
+output "linux_ssh_through_jumpbox" {
+  description = "Linux ssh through jumpbox"
+  value       = <<EOT
+Linux Test Instance via Jumpbox, use the following command:
+ssh -o ProxyCommand="ssh -W [%h]:%p admin@${aws_instance.jumpbox.public_ip}" admin@${aws_instance.linux_test_instance.ipv6_addresses[0]}
+EOT
+}

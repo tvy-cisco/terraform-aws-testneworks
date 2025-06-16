@@ -48,16 +48,4 @@ resource "aws_internet_gateway" "test_network_igw" {
 
 
 
-###################
-# Outputs
-###################
-
-output "ssh_proxy_command_example" {
-  description = "Example SSH ProxyCommand configuration for accessing the test instance via the NAT64 server."
-  value       = <<EOT
-To SSH into the test instance
-  Linux Test Instance via Windows Jumpbox, use the following command:
-ssh -o ProxyCommand="ssh -W [%h]:%p admin@${aws_instance.jumpbox.public_ip}" admin@${aws_instance.linux_test_instance.ipv6_addresses[0]}
-EOT
-}
 

@@ -31,3 +31,11 @@ output "mac_test_ip" {
   description = "Ipv6 address of mac test instance"
   value       = aws_instance.mac_test_instance.ipv6_addresses[0]
 }
+
+output "mac_ssh_through_jumpbox" {
+  description = "Mac Ssh through jumpbox"
+  value       = <<EOT
+Mac Test Instance via Jumpbox, use the following command:
+ssh -o ProxyCommand="ssh -W [%h]:%p admin@${aws_instance.jumpbox.public_ip}" ec2-user@${aws_instance.mac_test_instance.ipv6_addresses[0]}
+EOT
+}

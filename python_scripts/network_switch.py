@@ -11,38 +11,6 @@ from ssh_tunnel import SSHTunnel
 
 ssh_tunnels = []
 
-# def run_ssm_command(session, instance_id: str, command: str) -> None:
-#     ssm = session.client("ssm", region_name="us-west-2")
-#
-#     response = ssm.send_command(
-#         InstanceIds=[instance_id],
-#         DocumentName="AWS-RunShellScript",
-#         Parameters={"commands": [command]},
-#     )
-#
-#     command_id = response["Command"]["CommandId"]
-#
-#     # To get the output
-#     output = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
-#
-#     logger.info(output["StandardOutputContent"])
-#
-# def run_command_on_windows_instance(session, instance_id: str, command: str) -> None:
-#     ssm = session.client("ssm", region_name="us-west-2")
-#
-#     response = ssm.send_command(
-#         InstanceIds=[instance_id],
-#         DocumentName="AWS-RunPowershellScript",
-#         Parameters={"commands": [command]},
-#     )
-#
-#     command_id = response["Command"]["CommandId"]
-#
-#     # To get the output
-#     output = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
-#
-#     logger.info(output["StandardOutputContent"])
-
 
 def run_ssh_commands_on_ec2(
     jumpServerIpv4: str,
@@ -130,7 +98,7 @@ def run_vnc_tunnel(
 ) -> None:
 
     vnc_tunnel = SSHTunnel(
-        jump_host, 22, jump_username, local_port, windows_test_instance_ipv6, 5900
+        jump_host, 22, jump_username, local_port, mac_ip6_address, 5900
     )
     vnc_tunnel.start()
     logger.info(f"VNC SSH tunnel started on localhost:{local_port}")
@@ -225,12 +193,6 @@ def main():
             logger.info(
                 f"Switched Windows test machine to network 4 {aws_info.network4_gateway_ipv6}"
             )
-            run_rdp_ssh_tunnel(
-                jump_host=aws_info.jumpbox_instance_ipv4,
-                jump_username="admin",
-                windows_test_instance_ipv6=aws_info.windows_test_instance_ipv6,
-                local_port=7077,  # Default RDP port
-            )
         case 5:
             logger.info(f"Switching to network test 5 {aws_info.network5_gateway_ipv6}")
             switch_routing_table(
@@ -266,22 +228,23 @@ def main():
             logger.info(
                 f"switched windows test machine to network 5 {aws_info.network5_gateway_ipv6}"
             )
-            run_rdp_ssh_tunnel(
-                jump_host=aws_info.jumpbox_instance_ipv4,
-                jump_username="admin",
-                windows_test_instance_ipv6=aws_info.windows_test_instance_ipv6,
-                local_port=7077,
-            )
-            run_vnc_tunnel(
-                jump_host=aws_info.jumpbox_instance_ipv4,
-                jump_username="admin",
-                mac_ipv6_address=aws_info.mac_test_instance_ipv6,
-                local_port=7066,
-            )
 
         case _:
             raise ValueError("That test network is not implemented yet.")
-    wait_until_user_quits()
+
+        run_rdp_ssh_tunnel(
+            jump_host=aws_info.jumpbox_instance_ipv4,
+            jump_username="admin",
+            windows_test_instance_ipv6=aws_info.windows_test_instance_ipv6,
+            local_port=7077,
+        )
+        run_vnc_tunnel(
+            jump_host=aws_info.jumpbox_instance_ipv4,
+            jump_username="admin",
+            mac_ipv6_address=aws_info.mac_test_instance_ipv6,
+            local_port=7066,
+        )
+        wait_until_user_quits()
 
 
 if __name__ == "__main__":
