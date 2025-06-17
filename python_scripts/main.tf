@@ -104,3 +104,14 @@ output "private_rt" {
   description = "private routing table id"
   value       = data.aws_route_table.private.id
 }
+
+output "ssh_tunneling_example" {
+  description = "Example SSH Tunneling"
+  value       = <<EOT
+Example for RDP Windows
+ssh -L 7077:[${tolist(data.aws_instance.windows_test_instance.ipv6_addresses)[0]}]:3389 admin@${data.aws_instance.jumpbox.public_ip}
+
+Example for VNC Mac
+ssh -L 7066:[${tolist(data.aws_instance.mac_test_instance.ipv6_addresses)[0]}]:5900 admin@${data.aws_instance.jumpbox.public_ip}
+EOT
+}

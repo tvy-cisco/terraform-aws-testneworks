@@ -4,7 +4,6 @@ import threading
 import time
 
 import paramiko
-
 from logger_config import logger
 
 
@@ -134,7 +133,7 @@ class SSHTunnel:
             while True:
                 # Use select for non-blocking check
                 if hasattr(source, "fileno"):
-                    ready, _, _ = select.select([source], [], [], 1.0)
+                    ready, _, _ = select.select([source], [], [], 0.05)
                     if not ready:
                         # Check if connections are still alive
                         if (
@@ -150,7 +149,7 @@ class SSHTunnel:
                     if source.recv_ready():
                         data = source.recv(4096)
                     else:
-                        time.sleep(0.01)
+                        time.sleep(0.001)
                         continue
                 else:
                     data = source.recv(4096)
