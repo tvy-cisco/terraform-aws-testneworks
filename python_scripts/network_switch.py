@@ -169,7 +169,7 @@ def setup_instances_for_network_tests(aws_info: AwsInfo, network_number: int) ->
             )
             run_ssh_commands_on_ec2(
                 jump_server_ipv4=aws_info.jumpbox_instance_ipv4,
-                jump_server_username="onprem-jenkins",
+                jump_server_username="admin",
                 host=aws_info.windows_test_instance_ipv6,
                 username="onprem-jenkins",
                 commands=[
