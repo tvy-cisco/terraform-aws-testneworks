@@ -8,7 +8,7 @@ Streamline installed (https://docs.strln.net/hc/en-us/articles/360025226072-Stre
 Streamline permission created for your user (https://docs.strln.net/hc/en-us/articles/360036844571-How-to-get-Streamline-for-your-team)
 
 >[!NOTE] 
->The Streamline command is cumbersome to type, so we will create an alias for it - onprem-test-eng.
+>The Streamline command is cumbersome to type, so we will create an alias for it - `onprem-test-eng`
 >
 >Mac Zshell: Add this alias to your .zshrc so you don't need to remember this
 >```
