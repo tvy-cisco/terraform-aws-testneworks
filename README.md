@@ -2,10 +2,10 @@
 Right now only Network 4 and Network 5 are supported (IPV6 only). https://confluence-eng-rtp2.cisco.com/conf/display/PROD/Test+Network+Design
 
 # Requirements
-Python 3 installed
-Terraform installed (https://developer.hashicorp.com/terraform/install)
-Streamline installed (https://docs.strln.net/hc/en-us/articles/360025226072-Streamline-CLI-Installing-the-CLI-Manually)
-Streamline permission created for your user (https://docs.strln.net/hc/en-us/articles/360036844571-How-to-get-Streamline-for-your-team)
+- Python 3 installed
+- Terraform installed (https://developer.hashicorp.com/terraform/install)
+- Streamline installed (https://docs.strln.net/hc/en-us/articles/360025226072-Streamline-CLI-Installing-the-CLI-Manually)
+- Streamline permission created for your user (https://docs.strln.net/hc/en-us/articles/360036844571-How-to-get-Streamline-for-your-team)
 
 >[!NOTE] 
 >The Streamline command is cumbersome to type, so we will create an alias for it - `onprem-test-eng`
