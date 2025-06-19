@@ -6,6 +6,8 @@ Right now only Network 4 and Network 5 are supported (IPV6 only). https://conflu
 - Terraform installed (https://developer.hashicorp.com/terraform/install)
 - Streamline installed (https://docs.strln.net/hc/en-us/articles/360025226072-Streamline-CLI-Installing-the-CLI-Manually)
 - Streamline permission created for your user (https://docs.strln.net/hc/en-us/articles/360036844571-How-to-get-Streamline-for-your-team)
+- Make sure your are on Cisco VPN or Cisco Blizzard Network
+- Make sure you have ssh_keys on the jumpbox (Ask Darren to add your ssh keys to the jumpbox)
 
 >[!NOTE] 
 >The Streamline command is cumbersome to type, so we will create an alias for it - `onprem-test-eng`
