@@ -141,24 +141,9 @@ def wait_until_user_quits() -> None:
         logger.info("Goodbye!")
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Switch network routes for an EC2 instance."
-    )
-    parser.add_argument(
-        "network_test_number",
-        type=int,
-        help="Test network to switch to (1-7).",
-    )
-    args = parser.parse_args()
-
-    if args.network_test_number < 1 or args.network_test_number > 7:
-        raise ValueError("Network test number must be between 1 and 7.")
-
-    aws_info = get_aws_info()
+def setup_instances_for_network_tests(aws_info: AwsInfo, network_number: int) -> None:
     session = boto3.Session(profile_name="strln")
-
-    match args.network_test_number:
+    match network_number:
         case 4:
             logger.info(
                 f"Switching to network test 4. {aws_info.network4_gateway_ipv6}"
@@ -263,6 +248,8 @@ def main():
         case _:
             raise ValueError("That test network is not implemented yet.")
 
+
+def run_tunnels(aws_info: AwsInfo) -> None:
     run_rdp_tunnel(
         jump_host=aws_info.jumpbox_instance_ipv4,
         jump_username="admin",
@@ -276,6 +263,35 @@ def main():
         local_port=7066,
     )
     time.sleep(1)  # Give tunnels time to establish
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Switch network routes for an EC2 instance."
+    )
+    parser.add_argument(
+        "network_test_number", type=int, help="Test network to switch to (1-7)."
+    )
+
+    parser.add_argument(
+        "--skip",
+        action="store_true",
+        help="Skip network switching and only start tunnels.",
+    )
+    args = parser.parse_args()
+
+    if args.network_test_number < 1 or args.network_test_number > 7:
+        raise ValueError("Network test number must be between 1 and 7.")
+
+    aws_info = get_aws_info()
+    if not args.skip:
+        setup_instances_for_network_tests(
+            aws_info=aws_info, network_number=args.network_test_number
+        )
+    else:
+        logger.info("Skipping network switching, starting tunnels only...")
+
+    run_tunnels(aws_info=aws_info)
     wait_until_user_quits()
 
 
